@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ember — ローカルAIキャラチャット</title>
+<meta name="description" content="あなたの端末の中だけで動くAIキャラクターチャット。WebGPUでモデルをローカル実行し、会話はクラウドに送りません。" />
+<meta name="theme-color" content="#12141C" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2264%22%20height%3D%2264%22%20viewBox%3D%220%200%2064%2064%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3CradialGradient%20id%3D%22g%22%20cx%3D%2250%25%22%20cy%3D%2250%25%22%20r%3D%2250%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23FFD68A%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%2245%25%22%20stop-color%3D%22%23F2B441%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23F2B441%22%20stop-opacity%3D%220%22%2F%3E%0A%20%20%20%20%3C%2FradialGradient%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2312141C%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2232%22%20cy%3D%2233%22%20r%3D%2220%22%20fill%3D%22url(%23g)%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2232%22%20cy%3D%2233%22%20r%3D%229%22%20fill%3D%22%23F2B441%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2232%22%20cy%3D%2231%22%20r%3D%224.5%22%20fill%3D%22%23FFD68A%22%2F%3E%0A%3C%2Fsvg%3E" type="image/svg+xml" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Ember" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+:root{--ink:#12141C;--panel:#191C26;--panel-2:#20242F;--line:#2A2F3D;--line-soft:#22262F;--text:#E7E9F0;--muted:#8C90A2;--faint:#5E6273;--ok:#6FD3A0;--danger:#E0705F;--accent:#F2B441;--accent-soft:color-mix(in srgb, var(--accent) 14%, transparent);--accent-line:color-mix(in srgb, var(--accent) 30%, transparent);--accent-core:color-mix(in srgb, var(--accent) 60%, white);--accent-ink:#15110a;--r:14px;--maxw:760px;--mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;--display:"Space Grotesk","Noto Sans JP",system-ui,sans-serif;--body:"Inter","Noto Sans JP",system-ui,-apple-system,sans-serif}*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:radial-gradient(130% 80% at 50% -8%,color-mix(in srgb,var(--accent) 7%,#1A1E2A) 0%,var(--ink) 52%) fixed,var(--ink);color:var(--text);font-family:var(--body);font-size:15.5px;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;transition:background .5s ease}button{font-family:inherit;cursor:pointer;color:inherit}::selection{background:var(--accent-soft)}:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.app{max-width:var(--maxw);margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;border-left:1px solid var(--line-soft);border-right:1px solid var(--line-soft)}.top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));background:#12141cd1;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line-soft)}.mark{width:13px;height:13px;border-radius:50%;flex:none;background:radial-gradient(circle at 42% 38%,var(--accent-core),var(--accent) 60%,color-mix(in srgb,var(--accent) 60%,black) 100%);box-shadow:0 0 0 3px var(--accent-soft),0 0 16px 2px color-mix(in srgb,var(--accent) 55%,transparent);transition:.4s}@media (prefers-reduced-motion:no-preference){.mark{animation:breathe 3.4s ease-in-out infinite}@keyframes breathe{0%,to{box-shadow:0 0 0 3px var(--accent-soft),0 0 12px 1px color-mix(in srgb,var(--accent) 40%,transparent)}50%{box-shadow:0 0 0 5px var(--accent-soft),0 0 22px 4px color-mix(in srgb,var(--accent) 65%,transparent)}}}.wordmark{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.01em}.wordmark small{color:var(--faint);font-weight:500;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;margin-left:7px;font-family:var(--mono)}.persona-chip{display:none;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:5px 13px 5px 6px;font-size:13px;font-weight:500;max-width:42vw;transition:.16s}.persona-chip.show{display:inline-flex}.persona-chip:hover{border-color:var(--accent-line)}.chip-ava{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:13px;background:radial-gradient(circle at 38% 30%,color-mix(in srgb,var(--accent) 50%,white),var(--accent) 70%);box-shadow:0 0 9px -2px var(--accent)}#chipName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.top-actions{display:flex;gap:7px;margin-left:auto}.ghost-btn{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:12.5px;font-weight:500;padding:7px 11px;border-radius:9px;transition:.16s}.ghost-btn:hover{color:var(--text);border-color:var(--accent-line)}.icon-btn{width:36px;height:36px;display:grid;place-items:center;background:transparent;border:1px solid var(--line);border-radius:10px;color:var(--muted);transition:.16s}.icon-btn:hover{color:var(--text);border-color:var(--accent-line)}.icon-btn svg{width:18px;height:18px}[hidden]{display:none!important}main{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth}.scroll-pad{padding:22px 18px 8px}.boot{padding:30px 20px 40px;animation:rise .5s ease both}.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);display:inline-flex;align-items:center;gap:8px;margin-bottom:18px}.eyebrow:before{content:"";width:18px;height:1px;background:var(--accent-line)}.boot h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,7vw,40px);line-height:1.12;letter-spacing:-.01em;margin:0 0 14px}.boot h1 .glow{color:var(--accent)}.boot p.lead{color:var(--muted);max-width:46ch;margin:0 0 26px}.field{margin-bottom:18px}.field-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:8px;display:block}.select-wrap{position:relative}select{width:100%;appearance:none;-webkit-appearance:none;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:11px;padding:14px 42px 14px 15px;font-size:15px;font-family:var(--body);transition:.16s}select:hover{border-color:var(--accent-line)}select:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}.select-wrap:after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}.model-note{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:9px;font-family:var(--mono);font-size:12px;color:var(--muted)}.model-note .mem{color:var(--accent)}.primary-btn{width:100%;margin-top:6px;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 80%,white),var(--accent));color:var(--accent-ink);font-weight:700;font-size:15.5px;font-family:var(--display);border:none;border-radius:12px;padding:15px 18px;box-shadow:0 10px 26px -10px color-mix(in srgb,var(--accent) 60%,transparent);display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:.16s}.primary-btn:hover:not(:disabled){transform:translateY(-1px)}.primary-btn:active:not(:disabled){transform:translateY(0)}.primary-btn:disabled{opacity:.85;cursor:default;background:var(--panel-2);color:var(--muted);box-shadow:none}.primary-btn .dot{width:9px;height:9px;border-radius:50%;background:var(--accent-ink)}.primary-btn:disabled .dot{background:var(--accent)}@media (prefers-reduced-motion:no-preference){.primary-btn:disabled .dot{animation:pulse 1s ease-in-out infinite}@keyframes pulse{0%,to{opacity:.35}50%{opacity:1}}}.progress{margin-top:20px;display:none}.progress.on{display:block;animation:rise .35s ease both}.bar{height:7px;border-radius:99px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line-soft)}.bar>i{display:block;height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 60%,black),var(--accent) 55%,var(--accent-core));box-shadow:0 0 12px color-mix(in srgb,var(--accent) 50%,transparent);transition:width .35s ease}.progress .pmeta{display:flex;justify-content:space-between;gap:12px;margin-top:9px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}.progress .pct{color:var(--accent)}.fine{margin-top:24px;font-size:12.5px;color:var(--faint);max-width:48ch;font-family:var(--mono);line-height:1.7}.warn{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:18px;color:var(--muted)}.warn b{color:var(--text);font-family:var(--display)}.warn code{font-family:var(--mono);color:var(--accent);font-size:13px}.chars{padding:26px 18px 40px;animation:rise .42s ease both}.chars h2{font-family:var(--display);font-weight:700;font-size:clamp(24px,6vw,32px);letter-spacing:-.01em;margin:0 0 6px}.chars .sub{color:var(--muted);margin:0 0 22px;font-size:14.5px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px}@media (min-width:600px){.grid{grid-template-columns:repeat(3,1fr)}}.card{position:relative;text-align:left;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:17px 15px;transition:transform .18s ease,border-color .18s ease}.card:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 75% at 50% -25%,color-mix(in srgb,var(--c) 16%,transparent),transparent 60%)}.card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--c) 45%,transparent)}.card>*{position:relative}.medallion{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:26px;margin-bottom:13px;background:radial-gradient(circle at 38% 30%,color-mix(in srgb,var(--c) 50%,white),var(--c) 66%,color-mix(in srgb,var(--c) 55%,black));box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 50%,transparent),0 9px 22px -9px var(--c)}.card .cname{font-family:var(--display);font-weight:700;font-size:16px}.card .crole{color:var(--muted);font-size:12px;margin-top:3px;font-family:var(--mono);line-height:1.45}.card .del{position:absolute;top:9px;right:9px;width:24px;height:24px;border-radius:50%;background:#00000059;border:1px solid var(--line);color:var(--muted);display:grid;place-items:center;font-size:15px;line-height:1;transition:.15s;z-index:2}.card .del:hover{color:var(--danger);border-color:var(--danger)}.card.add{border-style:dashed;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);min-height:140px}.card.add .plus{font-size:30px;line-height:1;color:var(--accent)}.card.add:hover{border-color:var(--accent-line);color:var(--text)}@media (prefers-reduced-motion:no-preference){.card{animation:pop .4s cubic-bezier(.2,.7,.3,1) both}@keyframes pop{0%{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}}.turn{margin-bottom:18px;display:flex;flex-direction:column;animation:rise .3s ease both}.turn.user{align-items:flex-end}.ai-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}.mini-ava{width:22px;height:22px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:13px;background:radial-gradient(circle at 38% 30%,color-mix(in srgb,var(--c) 50%,white),var(--c) 70%);box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 45%,transparent),0 0 11px -3px var(--c)}.ai-name{font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:color-mix(in srgb,var(--accent) 55%,var(--text))}.role-tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}.bubble{max-width:88%;padding:13px 16px;border-radius:14px;font-size:15px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}.turn.user .bubble{background:var(--accent-soft);border:1px solid var(--accent-line);border-bottom-right-radius:5px;color:color-mix(in srgb,var(--accent) 22%,var(--text))}.turn.ai .bubble{background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:5px;max-width:92%}.bubble.md{white-space:normal}.bubble.md>:first-child{margin-top:0}.bubble.md>:last-child{margin-bottom:0}.bubble.md p{margin:0 0 .6em}.bubble.md ul,.bubble.md ol{margin:.4em 0 .6em;padding-left:1.4em}.bubble.md li{margin:.2em 0}.bubble.md li>p{margin:0}.bubble.md h1,.bubble.md h2,.bubble.md h3,.bubble.md h4{font-family:var(--display);margin:.7em 0 .35em;line-height:1.25}.bubble.md h1{font-size:1.22em}.bubble.md h2{font-size:1.13em}.bubble.md h3{font-size:1.04em}.bubble.md h4{font-size:1em}.bubble.md a{color:var(--accent);text-decoration:underline;word-break:break-all}.bubble.md strong{font-weight:700}.bubble.md em{font-style:italic}.bubble.md code{font-family:var(--mono);font-size:.88em;background:#ffffff12;padding:.1em .35em;border-radius:5px}.bubble.md blockquote{border-left:3px solid var(--accent-line);margin:.5em 0;padding:.1em .9em;color:var(--muted)}.bubble.md hr{border:none;border-top:1px solid var(--line);margin:.8em 0}.bubble.md table{border-collapse:collapse;margin:.5em 0;font-size:.92em;display:block;overflow-x:auto}.bubble.md th,.bubble.md td{border:1px solid var(--line);padding:5px 9px}.code-block{margin:.6em 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0e1016}.code-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;background:#ffffff0a;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em}.code-copy{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:3px 9px;font-size:11px;font-family:var(--mono);transition:.15s;flex:none}.code-copy:hover{color:var(--text);border-color:var(--accent-line)}.code-block pre{margin:0;padding:11px 12px;overflow-x:auto}.code-block pre code{background:none;padding:0;font-size:12.5px;line-height:1.55;display:block;white-space:pre}.rag-bar{display:none;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid var(--line-soft);background:#12141ceb;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}.rag-bar.on{display:flex}.rag-bar.active{background:linear-gradient(180deg,var(--accent-soft),transparent)}.rag-label{font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--faint);flex:none}.rag-bar.active .rag-label{color:var(--accent)}.rag-select{flex:1;min-width:0}.rag-select select{padding:8px 32px 8px 12px;font-size:13px;border-radius:9px}.rag-cite{margin:0 0 14px;border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:8px 12px;font-size:12.5px;color:var(--muted)}.rag-cite summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color:var(--accent);list-style:none}.rag-cite summary::-webkit-details-marker{display:none}.rag-cite[open] summary{margin-bottom:7px}.rag-cite-item{padding:4px 0;border-top:1px solid var(--line-soft);word-break:break-word;line-height:1.5}.rag-cite-item:first-of-type{border-top:none}.caret:after{content:"";display:inline-block;width:8px;height:1.05em;vertical-align:-2px;margin-left:2px;background:var(--accent);border-radius:1px}@media (prefers-reduced-motion:no-preference){.caret:after{animation:blink 1s steps(1) infinite}@keyframes blink{50%{opacity:0}}}.suggest{display:flex;flex-wrap:wrap;gap:9px;margin-top:4px}.msg-actions{display:flex;gap:3px;margin-top:5px}.turn.user .msg-actions{justify-content:flex-end}.mbtn{background:transparent;border:none;color:var(--faint);font-size:11px;font-family:var(--mono);padding:3px 7px;border-radius:6px;transition:.15s;cursor:pointer}.mbtn:hover{color:var(--text);background:var(--panel-2)}.mbtn.regen{color:color-mix(in srgb,var(--accent) 60%,var(--faint))}.mbtn.regen:hover{color:var(--accent)}.edit-ta{width:100%;background:var(--panel-2);color:var(--text);border:1px solid var(--accent-line);border-radius:12px;padding:11px 13px;font-family:var(--body);font-size:15px;line-height:1.5;resize:none}.edit-ta:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}.edit-row{display:flex;gap:8px;margin-top:8px;justify-content:flex-end}.edit-save{background:var(--accent);color:var(--accent-ink);border:none;border-radius:9px;padding:8px 15px;font-weight:700;font-size:13px;font-family:var(--display)}.edit-cancel{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:8px 14px;font-size:13px}.chip{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:9px 15px;font-size:13.5px;transition:.16s}.chip:hover{color:var(--text);border-color:var(--accent-line);background:var(--panel-2)}.readout{display:none;align-items:center;gap:0;flex-wrap:wrap;padding:9px 18px;border-top:1px solid var(--line-soft);background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 4%,transparent),transparent);font-family:var(--mono);font-size:11.5px}.readout.on{display:flex}.ro{display:inline-flex;align-items:center;gap:7px;padding:2px 0}.ro+.ro:before{content:"";width:1px;height:13px;background:var(--line);margin:0 12px}.ro .k{color:var(--faint);letter-spacing:.1em;text-transform:uppercase;font-size:10px}.ro .v{color:var(--accent);font-weight:500}.live-dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none}.live-dot.live{background:var(--accent);box-shadow:0 0 9px var(--accent)}@media (prefers-reduced-motion:no-preference){.live-dot.live{animation:pulse .9s ease-in-out infinite}}.composer{display:none;gap:10px;align-items:flex-end;padding:14px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--line-soft);background:#12141ce6;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}.composer.on{display:flex}.ta-wrap{flex:1 1 auto}textarea{width:100%;resize:none;max-height:160px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:13px;padding:13px 15px;font-family:var(--body);font-size:15px;line-height:1.5;transition:.16s}textarea::placeholder{color:var(--faint)}textarea:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}.send,.stop{flex:none;width:48px;height:48px;border-radius:13px;border:none;display:grid;place-items:center;transition:.16s}.send{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 80%,white),var(--accent));color:var(--accent-ink);box-shadow:0 8px 20px -10px color-mix(in srgb,var(--accent) 65%,transparent)}.send:hover:not(:disabled){transform:translateY(-1px)}.send:disabled{background:var(--panel-2);color:var(--faint);box-shadow:none;cursor:default}.send svg,.stop svg{width:20px;height:20px}.stop{background:transparent;border:1px solid var(--danger);color:var(--danger)}.stop:hover{background:#e0705f1f}.mic{flex:none;width:48px;height:48px;border-radius:13px;border:1px solid var(--line);background:transparent;color:var(--muted);display:grid;place-items:center;transition:.16s}.mic:hover{color:var(--text);border-color:var(--accent-line)}.mic svg{width:20px;height:20px}.mic.listening{color:var(--accent-ink);background:var(--accent);border-color:transparent}@media (prefers-reduced-motion:no-preference){.mic.listening{animation:miclisten 1.3s ease-out infinite}@keyframes miclisten{0%{box-shadow:0 0 color-mix(in srgb,var(--accent) 55%,transparent)}to{box-shadow:0 0 0 13px color-mix(in srgb,var(--accent) 0%,transparent)}}}.icon-btn.active{color:var(--accent-ink);background:var(--accent);border-color:transparent}.spk{width:22px;height:22px;border-radius:50%;border:none;background:transparent;color:var(--faint);display:grid;place-items:center;transition:.15s;margin-left:2px}.spk:hover{color:var(--text)}.spk.on{color:var(--accent)}.spk svg{width:14px;height:14px}.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translate(-50%) translateY(10px);max-width:min(92vw,540px);background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:11px 15px;border-radius:12px;font-size:13px;line-height:1.5;box-shadow:0 16px 44px -18px #000;z-index:80;opacity:0;pointer-events:none;transition:.25s}.toast.show{opacity:1;transform:translate(-50%) translateY(0)}.tabs{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-bottom:20px}.tab{border:none;background:transparent;color:var(--muted);font-weight:600;font-size:13.5px;padding:8px 16px;border-radius:9px;transition:.15s;font-family:var(--display)}.tab.active{background:var(--accent);color:var(--accent-ink)}.tab:not(.active):hover{color:var(--text)}.tool-view{padding:22px 18px 36px;animation:rise .35s ease both}.tool-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}.tool-head .medallion{width:44px;height:44px;font-size:22px;margin:0}.tool-head h2{font-family:var(--display);font-weight:700;font-size:22px;margin:0}.tool-head .th-role{color:var(--muted);font-size:12px;font-family:var(--mono);margin-top:2px}.tool-row{display:flex;gap:9px;flex-wrap:wrap;margin:4px 0 16px}.run-btn{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 80%,white),var(--accent));color:var(--accent-ink);font-weight:700;font-family:var(--display);font-size:14.5px;border:none;border-radius:11px;padding:12px 22px;transition:.15s;display:inline-flex;align-items:center;gap:8px}.run-btn:hover:not(:disabled){transform:translateY(-1px)}.run-btn:disabled{opacity:.7;cursor:default;background:var(--panel-2);color:var(--muted)}.stop-btn{background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:11px;padding:12px 18px;font-weight:600;transition:.15s}.stop-btn:hover{background:#e0705f1f}.out{position:relative;margin-top:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px;min-height:64px;max-height:46dvh;overflow:auto;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:var(--text)}.out:empty:before{content:"\3053\3053\306b\7d50\679c\304c\8868\793a\3055\308c\307e\3059";color:var(--faint);font-family:var(--body)}.out.placeholder{color:var(--faint);font-family:var(--body)}.copy{position:absolute;top:9px;right:9px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:11.5px;font-family:var(--mono);transition:.15s;z-index:2}.copy:hover{color:var(--text);border-color:var(--accent-line)}.out-wrap{position:relative}.out-actions{position:absolute;top:9px;right:9px;display:flex;gap:6px;z-index:2}.obtn{background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:11.5px;font-family:var(--mono);transition:.15s}.obtn:hover{color:var(--text);border-color:var(--accent-line)}.send-hint{background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--text);border-radius:11px;padding:11px 14px;font-size:13.5px;margin-bottom:16px}.mem-bar{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:16px;transition:.15s;cursor:pointer}.mem-bar:hover{border-color:var(--accent-line);transform:translateY(-1px)}.mem-ico{font-size:22px;flex:none}.mem-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.mem-text b{font-size:14px;font-family:var(--display)}.mem-text span{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mem-edit{flex:none;font-family:var(--mono);font-size:12px;color:var(--accent)}.hist-list{display:flex;flex-direction:column;gap:9px}.hist-item{display:flex;align-items:center;gap:12px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 13px;transition:.15s}.hist-item:hover{border-color:var(--accent-line);transform:translateY(-1px)}.hist-main{flex:1;min-width:0}.hist-title{font-size:14.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hist-meta{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hist-del{flex:none;width:26px;height:26px;border-radius:50%;background:#00000040;border:1px solid var(--line);color:var(--muted);font-size:15px;line-height:1;transition:.15s}.hist-del:hover{color:var(--danger);border-color:var(--danger)}.hist-empty{color:var(--muted);font-size:14px;padding:18px 4px}.ctrl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin:10px 0 16px}@media (max-width:520px){.ctrl-grid{grid-template-columns:1fr}}.ctrl{display:flex;flex-direction:column;gap:6px}.ctrl label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between}.ctrl label .val{color:var(--accent)}.ctrl input[type=range]{width:100%;accent-color:var(--accent);height:22px}.ctrl input[type=number]{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:14px;width:100%}.ctrl input[type=number]:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}.toggle{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--text);cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:11px 13px}.toggle input{accent-color:var(--accent);width:17px;height:17px}.field-hint{font-size:12px;color:var(--faint);margin:-8px 0 14px}.ocr-drop{position:relative;border:1.5px dashed var(--line);border-radius:14px;background:var(--panel);min-height:148px;display:grid;place-items:center;text-align:center;color:var(--muted);cursor:pointer;padding:18px;transition:.16s;overflow:hidden}.ocr-drop:hover,.ocr-drop.drag{border-color:var(--accent-line);color:var(--text);background:var(--panel-2)}.ocr-ico{font-size:30px;margin-bottom:8px}.ocr-sub{color:var(--faint);font-size:12px}.ocr-preview{max-width:100%;max-height:280px;border-radius:10px;display:block}.ocr-status{margin:12px 0}.ocr-status .bar{height:6px;border-radius:99px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line-soft)}.ocr-status .bar>i{display:block;height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 60%,black),var(--accent));transition:width .3s ease}.ocr-status-text{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:7px}.send-to{background:var(--panel);border:1px solid var(--line);color:var(--text);font-weight:600;border-radius:11px;padding:11px 18px;font-size:14px;transition:.15s}.send-to:hover{border-color:var(--accent-line);transform:translateY(-1px)}.sem-search{display:flex;gap:9px;align-items:stretch}.sem-search .inp{flex:1;min-width:0}.sem-search .run-btn{padding:12px 18px}.sem-col-row{display:flex;gap:9px;align-items:stretch}.sem-col-row .select-wrap{flex:1;min-width:0}.sem-col-row .send-to{white-space:nowrap}.sem-results{margin-top:14px;display:flex;flex-direction:column;gap:9px}.sem-item{display:flex;align-items:center;gap:13px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;animation:rise .25s ease both}.sem-main{flex:1;min-width:0}.sem-text{font-size:14px;word-break:break-word;margin-bottom:7px}.sem-meter{height:5px;border-radius:99px;background:var(--panel-2);overflow:hidden}.sem-meter>i{display:block;height:100%;border-radius:99px;background:var(--accent)}.sem-score{flex:none;font-family:var(--mono);font-size:12px;color:var(--accent)}.overlay{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;background:#08090d99;backdrop-filter:blur(4px)}.overlay.on{display:flex;animation:fade .2s ease both}.sheet{width:100%;max-width:var(--maxw);max-height:92dvh;overflow-y:auto;background:var(--ink);border:1px solid var(--line);border-bottom:none;border-radius:20px 20px 0 0;padding:22px 20px;padding-bottom:max(22px,env(safe-area-inset-bottom));animation:sheetUp .26s cubic-bezier(.2,.7,.3,1) both}@media (min-width:620px){.overlay{align-items:center}.sheet{border-radius:18px;border-bottom:1px solid var(--line)}}.sheet h3{font-family:var(--display);font-weight:700;font-size:20px;margin:0 0 4px}.sheet .hint{color:var(--muted);font-size:13px;margin:0 0 18px}.lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:16px 0 8px;display:block}.inp{width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:11px;padding:12px 14px;font-family:var(--body);font-size:15px;transition:.16s}.inp:focus-visible{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}textarea.inp{resize:vertical;min-height:96px;line-height:1.5}.emoji-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.emoji-pick{width:46px;height:46px;border-radius:11px;border:1px solid var(--line);background:var(--panel);font-size:22px;display:grid;place-items:center;transition:.15s}.emoji-pick:hover{border-color:var(--accent-line)}.emoji-pick.sel{border-color:var(--accent);background:var(--accent-soft)}.swatches{display:flex;gap:10px;flex-wrap:wrap}.swatch{width:34px;height:34px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:.15s;box-shadow:0 0 0 1px #ffffff14}.swatch.sel{border-color:#fff;transform:scale(1.08)}.sheet-actions{display:flex;gap:10px;margin-top:24px}.btn-cancel{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:14px;font-weight:600;transition:.15s}.btn-cancel:hover{border-color:var(--muted)}.btn-save{flex:2;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 80%,white),var(--accent));color:var(--accent-ink);border:none;border-radius:12px;padding:14px;font-weight:700;font-family:var(--display);transition:.15s}.btn-save:hover{transform:translateY(-1px)}.err{color:var(--danger);font-size:12.5px;margin-top:10px;min-height:1em}@keyframes rise{0%{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes fade{0%{opacity:0}to{opacity:1}}@keyframes sheetUp{0%{transform:translateY(18px);opacity:.6}to{transform:none;opacity:1}}@media (max-width:560px){.app{border-left:none;border-right:none}.wordmark small{display:none}.ro+.ro:before{margin:0 9px}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <span class="mark" aria-hidden="true"></span>
+    <span class="wordmark">ember<small>local · webgpu</small></span>
+    <button id="personaChip" class="persona-chip" title="キャラクターを切り替え">
+      <span class="chip-ava" id="chipAva"></span><span id="chipName">—</span>
+    </button>
+    <div class="top-actions">
+      <button id="installBtn" class="ghost-btn" hidden>インストール</button>
+      <button id="ttsBtn" class="icon-btn" hidden title="返信を読み上げ" aria-label="返信を読み上げ" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a3 3 0 0 1 0 6"/></svg>
+      </button>
+      <button id="newBtn" class="icon-btn" hidden title="新しい会話" aria-label="新しい会話">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button id="modelBtn" class="icon-btn" hidden title="モデルを変更" aria-label="モデルを変更">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- BOOT -->
+    <section id="boot" class="boot">
+      <span class="eyebrow">ローカル実行 · データは外に出ない</span>
+      <h1>クラウドに送らない、<br><span class="glow">あなたの端末のAI。</span></h1>
+      <p class="lead">モデルをこの端末にダウンロードして、ブラウザの中だけで動かします。通信が必要なのは初回だけ。一度読み込めば、オフラインでもキャラクターと会話できます。</p>
+
+      <div id="supported">
+        <div class="field">
+          <label class="field-label" for="modelSelect">使うモデル</label>
+          <div class="select-wrap"><select id="modelSelect"></select></div>
+          <div class="model-note"><span id="modelDesc">—</span><span class="mem" id="modelMem">—</span></div>
+        </div>
+        <button id="igniteBtn" class="primary-btn"><span class="dot"></span><span id="igniteLabel">モデルを起動</span></button>
+        <div class="progress" id="progress">
+          <div class="bar"><i id="barFill"></i></div>
+          <div class="pmeta"><span id="progressText">準備中…</span><span class="pct" id="progressPct">0%</span></div>
+        </div>
+        <p class="fine">初回はモデル（数百MB〜数GB）のダウンロードに数分かかることがあります。2回目以降は端末のキャッシュから瞬時に起動します。WebGPU対応ブラウザ（PCの Chrome / Edge など）が必要です。</p>
+      </div>
+
+      <div id="unsupported" class="warn" hidden>
+        <b>この端末では WebGPU が使えません。</b><br>
+        Ember はブラウザ内でモデルを動かすために WebGPU を使います。最新の <b>Chrome</b> または <b>Edge</b>（PC推奨）でお試しください。<br>
+        Firefox では <code>about:config</code> の <code>dom.webgpu.enabled</code>、Safari は最新版で有効になる場合があります。
+      </div>
+    </section>
+
+    <!-- HOME: characters + toolbox -->
+    <section id="home" class="chars" hidden>
+      <div class="tabs" role="tablist">
+        <button id="tabChars" class="tab active" role="tab">キャラ</button>
+        <button id="tabTools" class="tab" role="tab">道具箱</button>
+        <button id="tabHist" class="tab" role="tab">履歴</button>
+      </div>
+      <div id="charsTab">
+        <button id="memBar" class="mem-bar">
+          <span class="mem-ico" aria-hidden="true">🧠</span>
+          <span class="mem-text"><b>メモリ</b><span id="memSummary">まだ何も覚えていません</span></span>
+          <span class="mem-edit">編集</span>
+        </button>
+        <div id="sendHint" class="send-hint" hidden>結果をどのキャラクターに送りますか？ 選ぶとチャットの入力欄に貼り付けます。</div>
+        <h2>キャラクターを選ぶ</h2>
+        <p class="sub">話し相手を選んでください。いつでも切り替えられます。モデルはそのまま、性格だけが変わります。</p>
+        <div class="grid" id="charGrid"></div>
+      </div>
+      <div id="toolsTab" hidden>
+        <h2>道具箱</h2>
+        <p class="sub">チャット以外の使い方。同じモデルのまま、文章を処理したり挙動を試したりできます。</p>
+        <div class="grid" id="toolGrid"></div>
+      </div>
+      <div id="histTab" hidden>
+        <h2>会話の履歴</h2>
+        <p class="sub">過去の会話を選ぶと続きから話せます。会話は送信するたびに自動保存されます。</p>
+        <div id="histList" class="hist-list"></div>
+      </div>
+    </section>
+
+    <!-- CHAT -->
+    <section id="chatWrap" class="scroll-pad" hidden>
+      <div id="transcript" role="log" aria-live="polite"></div>
+      <div id="emptyChat"><div class="suggest" id="suggest"></div></div>
+    </section>
+
+    <!-- TOOL VIEW -->
+    <section id="toolView" class="tool-view" hidden>
+      <div class="tool-head">
+        <div class="medallion" id="toolMed" aria-hidden="true"></div>
+        <div><h2 id="toolTitle">—</h2><div class="th-role" id="toolRole">—</div></div>
+      </div>
+
+      <!-- 構造化抽出 -->
+      <div id="extractPanel" hidden>
+        <label class="field-label" for="exFields">取り出したい項目（カンマ区切り）</label>
+        <input id="exFields" class="inp" type="text" placeholder="名前, 日付, 場所, 金額" />
+        <div class="tool-row" id="exPresets"></div>
+        <label class="field-label" for="exInput">元の文章</label>
+        <textarea id="exInput" class="inp" placeholder="ここに文章を貼り付け…"></textarea>
+        <div class="tool-row"><button id="exRun" class="run-btn"><span>抽出する</span></button></div>
+        <div class="out-wrap"><div id="exOut" class="out"></div></div>
+      </div>
+
+      <!-- 変換ツール -->
+      <div id="transformPanel" hidden>
+        <label class="field-label" for="tfInput">元の文章</label>
+        <textarea id="tfInput" class="inp" placeholder="ここに文章を貼り付け…"></textarea>
+        <label class="field-label">操作を選ぶ（押すと実行）</label>
+        <div class="tool-row" id="tfOps"></div>
+        <div class="out-wrap"><div id="tfOut" class="out"></div></div>
+      </div>
+
+      <!-- プレイグラウンド -->
+      <div id="playgroundPanel" hidden>
+        <label class="field-label" for="pgSystem">システムプロンプト（任意）</label>
+        <textarea id="pgSystem" class="inp" placeholder="例：あなたは簡潔に答えるアシスタントです。"></textarea>
+        <label class="field-label" for="pgUser">ユーザープロンプト</label>
+        <textarea id="pgUser" class="inp" placeholder="モデルに送る内容…"></textarea>
+        <div class="ctrl-grid">
+          <div class="ctrl"><label for="pgTemp">temperature<span class="val" id="pgTempV">0.70</span></label>
+            <input id="pgTemp" type="range" min="0" max="1.5" step="0.05" value="0.7" /></div>
+          <div class="ctrl"><label for="pgTopp">top_p<span class="val" id="pgToppV">0.95</span></label>
+            <input id="pgTopp" type="range" min="0" max="1" step="0.05" value="0.95" /></div>
+          <div class="ctrl"><label for="pgMax">max tokens<span class="val" id="pgMaxV">256</span></label>
+            <input id="pgMax" type="range" min="16" max="1024" step="16" value="256" /></div>
+          <div class="ctrl"><label for="pgSeed">seed（任意・再現用）</label>
+            <input id="pgSeed" type="number" placeholder="空欄＝毎回ランダム" /></div>
+        </div>
+        <label class="toggle" for="pgJson"><input id="pgJson" type="checkbox" />JSONモード（出力をJSONに強制）</label>
+        <div class="tool-row" style="margin-top:14px;">
+          <button id="pgRun" class="run-btn"><span>実行</span></button>
+          <button id="pgStop" class="stop-btn" hidden>停止</button>
+        </div>
+        <div class="out-wrap"><div id="pgOut" class="out"></div></div>
+      </div>
+
+      <!-- 画像OCR -->
+      <div id="ocrPanel" hidden>
+        <label class="field-label">画像を選ぶ</label>
+        <div id="ocrDrop" class="ocr-drop">
+          <input id="ocrFile" type="file" accept="image/*" hidden />
+          <div id="ocrDropInner">
+            <div class="ocr-ico" aria-hidden="true">📷</div>
+            <div>タップして画像を選択<br><span class="ocr-sub">またはドラッグ＆ドロップ / 貼り付け</span></div>
+          </div>
+          <img id="ocrPreview" class="ocr-preview" hidden alt="選択した画像" />
+        </div>
+        <div class="field-hint">日本語＋英語に対応。初回は文字認識データのダウンロードに少し時間がかかります（以降はオフラインでも動作）。きれいな印刷文字が得意で、手書きや複雑なレイアウトは苦手です。</div>
+
+        <label class="field-label" for="ocrLang">認識する言語</label>
+        <div class="select-wrap"><select id="ocrLang">
+          <option value="jpn+eng">日本語＋英語</option>
+          <option value="jpn">日本語のみ</option>
+          <option value="eng">英語のみ</option>
+        </select></div>
+        <label class="field-label">画像の前処理（精度向上）</label>
+        <div class="tool-row">
+          <label class="toggle"><input id="ocrUpscale" type="checkbox" checked />小さい画像を拡大</label>
+          <label class="toggle"><input id="ocrGray" type="checkbox" />グレースケール</label>
+          <label class="toggle"><input id="ocrThresh" type="checkbox" />白黒くっきり（2値化）</label>
+        </div>
+        <div class="tool-row"><button id="ocrRerunBtn" class="send-to" hidden>設定を変えて再認識</button></div>
+
+        <div id="ocrStatus" class="ocr-status" hidden>
+          <div class="bar"><i id="ocrBar"></i></div>
+          <div class="ocr-status-text" id="ocrStatusText">—</div>
+        </div>
+        <label class="field-label" for="ocrText">認識した文字（編集できます）</label>
+        <textarea id="ocrText" class="inp" placeholder="ここに認識結果が表示されます…"></textarea>
+        <div id="ocrActions" hidden>
+          <label class="field-label">この文章を道具箱で処理</label>
+          <div class="tool-row" id="ocrOps"></div>
+          <div class="tool-row">
+            <button id="ocrToExtractBtn" class="send-to">→ 構造化抽出に送る</button>
+            <button id="ocrToChatBtn" class="send-to">💬 チャットで相談</button>
+          </div>
+          <div class="out-wrap"><div id="ocrOut" class="out"></div></div>
+        </div>
+      </div>
+
+      <!-- 意味検索 -->
+      <div id="semPanel" hidden>
+        <label class="field-label" for="semColSelect">コレクション</label>
+        <div class="sem-col-row">
+          <div class="select-wrap"><select id="semColSelect"></select></div>
+          <button id="semNewBtn" class="send-to">＋ 新規</button>
+        </div>
+        <label class="field-label" for="semColName">コレクション名</label>
+        <input id="semColName" class="inp" type="text" placeholder="例：買い物リスト" />
+        <label class="field-label" for="semCorpus">ノート（1行＝1項目）</label>
+        <textarea id="semCorpus" class="inp" placeholder="例：&#10;牛乳を買う&#10;歯医者の予約をとる&#10;週末に映画を見る&#10;電気代を払う"></textarea>
+        <div class="field-hint">1行ごとに1項目として扱います。初回は埋め込みモデル（数十MB）のダウンロードに時間がかかります。キーワードではなく「意味」で探すので、言い回しが違っても見つかります。複数のノート集合を名前を付けて保存・切替できます。</div>
+        <div class="tool-row">
+          <button id="semBuild" class="run-btn"><span>インデックスを作成して保存</span></button>
+          <button id="semDeleteBtn" class="send-to">このコレクションを削除</button>
+        </div>
+        <div id="semStatus" class="ocr-status" hidden><div class="bar"><i id="semBar"></i></div><div class="ocr-status-text" id="semStatusText">—</div></div>
+        <div id="semSearchRow" hidden>
+          <label class="field-label" for="semQuery">意味で検索</label>
+          <div class="sem-search">
+            <input id="semQuery" class="inp" type="text" placeholder="例：通院の予定" />
+            <button id="semGo" class="run-btn">検索</button>
+          </div>
+          <div id="semResults" class="sem-results"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- READOUT -->
+  <div id="readout" class="readout">
+    <span class="ro"><span class="live-dot" id="liveDot"></span><span class="k">model</span><span class="v" id="roModel">—</span></span>
+    <span class="ro"><span class="k">mem</span><span class="v" id="roMem">—</span></span>
+    <span class="ro"><span class="k">gpu</span><span class="v" id="roGpu">—</span></span>
+    <span class="ro"><span class="k">thread</span><span class="v" id="roThread">—</span></span>
+    <span class="ro"><span class="k">decode</span><span class="v" id="roTps">— tok/s</span></span>
+  </div>
+
+  <!-- RAG (notes) bar -->
+  <div id="ragBar" class="rag-bar">
+    <span class="rag-label">📎 ノート参照</span>
+    <div class="select-wrap rag-select"><select id="ragSelect"></select></div>
+  </div>
+
+  <!-- COMPOSER -->
+  <div id="composer" class="composer">
+    <button id="micBtn" class="mic" aria-label="音声入力" title="音声入力" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    </button>
+    <div class="ta-wrap"><textarea id="input" rows="1" placeholder="メッセージを入力…（Enterで送信 / Shift+Enterで改行）"></textarea></div>
+    <button id="sendBtn" class="send" aria-label="送信" disabled>
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 12L20 4L14 20L11 13L4 12Z" fill="currentColor"/></svg>
+    </button>
+    <button id="stopBtn" class="stop" aria-label="停止" hidden>
+      <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- CREATOR MODAL -->
+<div id="creator" class="overlay" role="dialog" aria-modal="true" aria-labelledby="creatorTitle">
+  <div class="sheet">
+    <h3 id="creatorTitle">キャラクターを作る</h3>
+    <p class="hint">名前・見た目・性格を決めると、あなただけの話し相手になります。性格欄がそのままモデルへの指示になります。</p>
+
+    <label class="lbl" for="cpName">名前</label>
+    <input id="cpName" class="inp" type="text" maxlength="20" placeholder="例：ロボ執事ジーヴス" />
+
+    <label class="lbl">アイコン</label>
+    <div class="emoji-row" id="emojiRow"></div>
+
+    <label class="lbl">テーマカラー</label>
+    <div class="swatches" id="swatchRow"></div>
+
+    <label class="lbl" for="cpPrompt">性格・話し方（モデルへの指示）</label>
+    <textarea id="cpPrompt" class="inp" maxlength="600"
+      placeholder="例：あなたは礼儀正しいロボット執事『ジーヴス』。常に丁寧語で、落ち着いて要点よく答える。日本語で、ジーヴスとして話す。"></textarea>
+
+    <div class="err" id="cpErr"></div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="cpCancel">やめる</button>
+      <button class="btn-save" id="cpSave">作成する</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- MEMORY MODAL -->
+<div id="memModal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="memTitle">
+  <div class="sheet">
+    <h3 id="memTitle">🧠 メモリ</h3>
+    <p class="hint">Ember が全キャラクター共通で覚えておく、あなたについての情報です。会話のたびに参照されます（1行＝1項目）。</p>
+    <label class="lbl" for="memText">覚えておくこと</label>
+    <textarea id="memText" class="inp" placeholder="例：&#10;名前はタロウ&#10;Web系のエンジニア&#10;甘いものが好き&#10;簡潔な説明を好む"></textarea>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="memClose">閉じる</button>
+      <button class="btn-save" id="memSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Single-file build shims ----------------------------------------------- */
+/* (a) Force the main-thread engine in the single-file build.
+       There is no separate worker.js here, and a module worker created from a
+       blob: URL cannot reliably complete its CDN import (especially on file://
+       origins): the WebLLM handshake hangs with no error, so the app's
+       try/catch never falls back. We throw on the worker.js request so that
+       createEngine() falls straight through to the main-thread engine
+       (CreateMLCEngine), which is proven to work here because the page already
+       imported web-llm on the main thread to render the boot screen. */
+(function () {
+  var Native = window.Worker;
+  function PatchedWorker(url, opts) {
+    if (typeof url === "string" && url.indexOf("worker.js") !== -1) {
+      throw new Error("single-file build: inference worker disabled, using main thread");
+    }
+    return new Native(url, opts);
+  }
+  PatchedWorker.prototype = Native.prototype;
+  window.Worker = PatchedWorker;
+})();
+
+/* (b) Service worker is ENABLED for the PWA build (offline + installable).
+       The app registers ./sw.js on load; see sw.js for the caching strategy. */
+</script>
+<script type="module">
+var Fo=Object.defineProperty;var zo=(n,e,t)=>e in n?Fo(n,e,{enumerable:!0,configurable:!0,writable:!0,value:t}):n[e]=t;var L=(n,e,t)=>zo(n,typeof e!="symbol"?e+"":e,t);import*as Z from"https://esm.run/@mlc-ai/web-llm";function Tn(){return{async:!1,breaks:!1,extensions:null,gfm:!0,hooks:null,pedantic:!1,renderer:null,silent:!1,tokenizer:null,walkTokens:null}}var Le=Tn();function Kr(n){Le=n}var Zr=/[&<>"']/,Uo=new RegExp(Zr.source,"g"),Xr=/[<>"']|&(?!(#\d{1,7}|#[Xx][a-fA-F0-9]{1,6}|\w+);)/,Ho=new RegExp(Xr.source,"g"),$o={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"},qr=n=>$o[n];function ee(n,e){if(e){if(Zr.test(n))return n.replace(Uo,qr)}else if(Xr.test(n))return n.replace(Ho,qr);return n}var jo=/(^|[^\[])\^/g;function v(n,e){let t=typeof n=="string"?n:n.source;e=e||"";let r={replace:(s,i)=>{let l=typeof i=="string"?i:i.source;return l=l.replace(jo,"$1"),t=t.replace(s,l),r},getRegex:()=>new RegExp(t,e)};return r}function Vr(n){try{n=encodeURI(n).replace(/%25/g,"%")}catch{return null}return n}var pt={exec:()=>null};function Yr(n,e){let t=n.replace(/\|/g,(i,l,u)=>{let d=!1,T=l;for(;--T>=0&&u[T]==="\\";)d=!d;return d?"|":" |"}),r=t.split(/ \|/),s=0;if(r[0].trim()||r.shift(),r.length>0&&!r[r.length-1].trim()&&r.pop(),e)if(r.length>e)r.splice(e);else for(;r.length<e;)r.push("");for(;s<r.length;s++)r[s]=r[s].trim().replace(/\\\|/g,"|");return r}function ct(n,e,t){let r=n.length;if(r===0)return"";let s=0;for(;s<r;){let i=n.charAt(r-s-1);if(i===e&&!t)s++;else if(i!==e&&t)s++;else break}return n.slice(0,r-s)}function Go(n,e){if(n.indexOf(e[1])===-1)return-1;let t=0;for(let r=0;r<n.length;r++)if(n[r]==="\\")r++;else if(n[r]===e[0])t++;else if(n[r]===e[1]&&(t--,t<0))return r;return-1}function Jr(n,e,t,r){let s=e.href,i=e.title?ee(e.title):null,l=n[1].replace(/\\([\[\]])/g,"$1");if(n[0].charAt(0)!=="!"){r.state.inLink=!0;let u={type:"link",raw:t,href:s,title:i,text:l,tokens:r.inlineTokens(l)};return r.state.inLink=!1,u}return{type:"image",raw:t,href:s,title:i,text:ee(l)}}function Wo(n,e){let t=n.match(/^(\s+)(?:```)/);if(t===null)return e;let r=t[1];return e.split(`
+`).map(s=>{let i=s.match(/^\s+/);if(i===null)return s;let[l]=i;return l.length>=r.length?s.slice(r.length):s}).join(`
+`)}var We=class{constructor(e){L(this,"options");L(this,"rules");L(this,"lexer");this.options=e||Le}space(e){let t=this.rules.block.newline.exec(e);if(t&&t[0].length>0)return{type:"space",raw:t[0]}}code(e){let t=this.rules.block.code.exec(e);if(t){let r=t[0].replace(/^(?: {1,4}| {0,3}\t)/gm,"");return{type:"code",raw:t[0],codeBlockStyle:"indented",text:this.options.pedantic?r:ct(r,`
+`)}}}fences(e){let t=this.rules.block.fences.exec(e);if(t){let r=t[0],s=Wo(r,t[3]||"");return{type:"code",raw:r,lang:t[2]?t[2].trim().replace(this.rules.inline.anyPunctuation,"$1"):t[2],text:s}}}heading(e){let t=this.rules.block.heading.exec(e);if(t){let r=t[2].trim();if(/#$/.test(r)){let s=ct(r,"#");(this.options.pedantic||!s||/ $/.test(s))&&(r=s.trim())}return{type:"heading",raw:t[0],depth:t[1].length,text:r,tokens:this.lexer.inline(r)}}}hr(e){let t=this.rules.block.hr.exec(e);if(t)return{type:"hr",raw:ct(t[0],`
+`)}}blockquote(e){let t=this.rules.block.blockquote.exec(e);if(t){let r=ct(t[0],`
+`).split(`
+`),s="",i="",l=[];for(;r.length>0;){let u=!1,d=[],T;for(T=0;T<r.length;T++)if(/^ {0,3}>/.test(r[T]))d.push(r[T]),u=!0;else if(!u)d.push(r[T]);else break;r=r.slice(T);let m=d.join(`
+`),g=m.replace(/\n {0,3}((?:=+|-+) *)(?=\n|$)/g,`
+    $1`).replace(/^ {0,3}>[ \t]?/gm,"");s=s?`${s}
+${m}`:m,i=i?`${i}
+${g}`:g;let k=this.lexer.state.top;if(this.lexer.state.top=!0,this.lexer.blockTokens(g,l,!0),this.lexer.state.top=k,r.length===0)break;let A=l[l.length-1];if(A?.type==="code")break;if(A?.type==="blockquote"){let w=A,O=w.raw+`
+`+r.join(`
+`),B=this.blockquote(O);l[l.length-1]=B,s=s.substring(0,s.length-w.raw.length)+B.raw,i=i.substring(0,i.length-w.text.length)+B.text;break}else if(A?.type==="list"){let w=A,O=w.raw+`
+`+r.join(`
+`),B=this.list(O);l[l.length-1]=B,s=s.substring(0,s.length-A.raw.length)+B.raw,i=i.substring(0,i.length-w.raw.length)+B.raw,r=O.substring(l[l.length-1].raw.length).split(`
+`);continue}}return{type:"blockquote",raw:s,tokens:l,text:i}}}list(e){let t=this.rules.block.list.exec(e);if(t){let r=t[1].trim(),s=r.length>1,i={type:"list",raw:"",ordered:s,start:s?+r.slice(0,-1):"",loose:!1,items:[]};r=s?`\\d{1,9}\\${r.slice(-1)}`:`\\${r}`,this.options.pedantic&&(r=s?r:"[*+-]");let l=new RegExp(`^( {0,3}${r})((?:[	 ][^\\n]*)?(?:\\n|$))`),u=!1;for(;e;){let d=!1,T="",m="";if(!(t=l.exec(e))||this.rules.block.hr.test(e))break;T=t[0],e=e.substring(T.length);let g=t[2].split(`
+`,1)[0].replace(/^\t+/,de=>" ".repeat(3*de.length)),k=e.split(`
+`,1)[0],A=!g.trim(),w=0;if(this.options.pedantic?(w=2,m=g.trimStart()):A?w=t[1].length+1:(w=t[2].search(/[^ ]/),w=w>4?1:w,m=g.slice(w),w+=t[1].length),A&&/^[ \t]*$/.test(k)&&(T+=k+`
+`,e=e.substring(k.length+1),d=!0),!d){let de=new RegExp(`^ {0,${Math.min(3,w-1)}}(?:[*+-]|\\d{1,9}[.)])((?:[ 	][^\\n]*)?(?:\\n|$))`),rt=new RegExp(`^ {0,${Math.min(3,w-1)}}((?:- *){3,}|(?:_ *){3,}|(?:\\* *){3,})(?:\\n+|$)`),Fe=new RegExp(`^ {0,${Math.min(3,w-1)}}(?:\`\`\`|~~~)`),V=new RegExp(`^ {0,${Math.min(3,w-1)}}#`),oe=new RegExp(`^ {0,${Math.min(3,w-1)}}<(?:[a-z].*>|!--)`,"i");for(;e;){let H=e.split(`
+`,1)[0],X;if(k=H,this.options.pedantic?(k=k.replace(/^ {1,4}(?=( {4})*[^ ])/g,"  "),X=k):X=k.replace(/\t/g,"    "),Fe.test(k)||V.test(k)||oe.test(k)||de.test(k)||rt.test(k))break;if(X.search(/[^ ]/)>=w||!k.trim())m+=`
+`+X.slice(w);else{if(A||g.replace(/\t/g,"    ").search(/[^ ]/)>=4||Fe.test(g)||V.test(g)||rt.test(g))break;m+=`
+`+k}!A&&!k.trim()&&(A=!0),T+=H+`
+`,e=e.substring(H.length+1),g=X.slice(w)}}i.loose||(u?i.loose=!0:/\n[ \t]*\n[ \t]*$/.test(T)&&(u=!0));let O=null,B;this.options.gfm&&(O=/^\[[ xX]\] /.exec(m),O&&(B=O[0]!=="[ ] ",m=m.replace(/^\[[ xX]\] +/,""))),i.items.push({type:"list_item",raw:T,task:!!O,checked:B,loose:!1,text:m,tokens:[]}),i.raw+=T}i.items[i.items.length-1].raw=i.items[i.items.length-1].raw.trimEnd(),i.items[i.items.length-1].text=i.items[i.items.length-1].text.trimEnd(),i.raw=i.raw.trimEnd();for(let d=0;d<i.items.length;d++)if(this.lexer.state.top=!1,i.items[d].tokens=this.lexer.blockTokens(i.items[d].text,[]),!i.loose){let T=i.items[d].tokens.filter(g=>g.type==="space"),m=T.length>0&&T.some(g=>/\n.*\n/.test(g.raw));i.loose=m}if(i.loose)for(let d=0;d<i.items.length;d++)i.items[d].loose=!0;return i}}html(e){let t=this.rules.block.html.exec(e);if(t)return{type:"html",block:!0,raw:t[0],pre:t[1]==="pre"||t[1]==="script"||t[1]==="style",text:t[0]}}def(e){let t=this.rules.block.def.exec(e);if(t){let r=t[1].toLowerCase().replace(/\s+/g," "),s=t[2]?t[2].replace(/^<(.*)>$/,"$1").replace(this.rules.inline.anyPunctuation,"$1"):"",i=t[3]?t[3].substring(1,t[3].length-1).replace(this.rules.inline.anyPunctuation,"$1"):t[3];return{type:"def",tag:r,raw:t[0],href:s,title:i}}}table(e){let t=this.rules.block.table.exec(e);if(!t||!/[:|]/.test(t[2]))return;let r=Yr(t[1]),s=t[2].replace(/^\||\| *$/g,"").split("|"),i=t[3]&&t[3].trim()?t[3].replace(/\n[ \t]*$/,"").split(`
+`):[],l={type:"table",raw:t[0],header:[],align:[],rows:[]};if(r.length===s.length){for(let u of s)/^ *-+: *$/.test(u)?l.align.push("right"):/^ *:-+: *$/.test(u)?l.align.push("center"):/^ *:-+ *$/.test(u)?l.align.push("left"):l.align.push(null);for(let u=0;u<r.length;u++)l.header.push({text:r[u],tokens:this.lexer.inline(r[u]),header:!0,align:l.align[u]});for(let u of i)l.rows.push(Yr(u,l.header.length).map((d,T)=>({text:d,tokens:this.lexer.inline(d),header:!1,align:l.align[T]})));return l}}lheading(e){let t=this.rules.block.lheading.exec(e);if(t)return{type:"heading",raw:t[0],depth:t[2].charAt(0)==="="?1:2,text:t[1],tokens:this.lexer.inline(t[1])}}paragraph(e){let t=this.rules.block.paragraph.exec(e);if(t){let r=t[1].charAt(t[1].length-1)===`
+`?t[1].slice(0,-1):t[1];return{type:"paragraph",raw:t[0],text:r,tokens:this.lexer.inline(r)}}}text(e){let t=this.rules.block.text.exec(e);if(t)return{type:"text",raw:t[0],text:t[0],tokens:this.lexer.inline(t[0])}}escape(e){let t=this.rules.inline.escape.exec(e);if(t)return{type:"escape",raw:t[0],text:ee(t[1])}}tag(e){let t=this.rules.inline.tag.exec(e);if(t)return!this.lexer.state.inLink&&/^<a /i.test(t[0])?this.lexer.state.inLink=!0:this.lexer.state.inLink&&/^<\/a>/i.test(t[0])&&(this.lexer.state.inLink=!1),!this.lexer.state.inRawBlock&&/^<(pre|code|kbd|script)(\s|>)/i.test(t[0])?this.lexer.state.inRawBlock=!0:this.lexer.state.inRawBlock&&/^<\/(pre|code|kbd|script)(\s|>)/i.test(t[0])&&(this.lexer.state.inRawBlock=!1),{type:"html",raw:t[0],inLink:this.lexer.state.inLink,inRawBlock:this.lexer.state.inRawBlock,block:!1,text:t[0]}}link(e){let t=this.rules.inline.link.exec(e);if(t){let r=t[2].trim();if(!this.options.pedantic&&/^</.test(r)){if(!/>$/.test(r))return;let l=ct(r.slice(0,-1),"\\");if((r.length-l.length)%2===0)return}else{let l=Go(t[2],"()");if(l>-1){let d=(t[0].indexOf("!")===0?5:4)+t[1].length+l;t[2]=t[2].substring(0,l),t[0]=t[0].substring(0,d).trim(),t[3]=""}}let s=t[2],i="";if(this.options.pedantic){let l=/^([^'"]*[^\s])\s+(['"])(.*)\2/.exec(s);l&&(s=l[1],i=l[3])}else i=t[3]?t[3].slice(1,-1):"";return s=s.trim(),/^</.test(s)&&(this.options.pedantic&&!/>$/.test(r)?s=s.slice(1):s=s.slice(1,-1)),Jr(t,{href:s&&s.replace(this.rules.inline.anyPunctuation,"$1"),title:i&&i.replace(this.rules.inline.anyPunctuation,"$1")},t[0],this.lexer)}}reflink(e,t){let r;if((r=this.rules.inline.reflink.exec(e))||(r=this.rules.inline.nolink.exec(e))){let s=(r[2]||r[1]).replace(/\s+/g," "),i=t[s.toLowerCase()];if(!i){let l=r[0].charAt(0);return{type:"text",raw:l,text:l}}return Jr(r,i,r[0],this.lexer)}}emStrong(e,t,r=""){let s=this.rules.inline.emStrongLDelim.exec(e);if(!s||s[3]&&r.match(/[\p{L}\p{N}]/u))return;if(!(s[1]||s[2]||"")||!r||this.rules.inline.punctuation.exec(r)){let l=[...s[0]].length-1,u,d,T=l,m=0,g=s[0][0]==="*"?this.rules.inline.emStrongRDelimAst:this.rules.inline.emStrongRDelimUnd;for(g.lastIndex=0,t=t.slice(-1*e.length+l);(s=g.exec(t))!=null;){if(u=s[1]||s[2]||s[3]||s[4]||s[5]||s[6],!u)continue;if(d=[...u].length,s[3]||s[4]){T+=d;continue}else if((s[5]||s[6])&&l%3&&!((l+d)%3)){m+=d;continue}if(T-=d,T>0)continue;d=Math.min(d,d+T+m);let k=[...s[0]][0].length,A=e.slice(0,l+s.index+k+d);if(Math.min(l,d)%2){let O=A.slice(1,-1);return{type:"em",raw:A,text:O,tokens:this.lexer.inlineTokens(O)}}let w=A.slice(2,-2);return{type:"strong",raw:A,text:w,tokens:this.lexer.inlineTokens(w)}}}}codespan(e){let t=this.rules.inline.code.exec(e);if(t){let r=t[2].replace(/\n/g," "),s=/[^ ]/.test(r),i=/^ /.test(r)&&/ $/.test(r);return s&&i&&(r=r.substring(1,r.length-1)),r=ee(r,!0),{type:"codespan",raw:t[0],text:r}}}br(e){let t=this.rules.inline.br.exec(e);if(t)return{type:"br",raw:t[0]}}del(e){let t=this.rules.inline.del.exec(e);if(t)return{type:"del",raw:t[0],text:t[2],tokens:this.lexer.inlineTokens(t[2])}}autolink(e){let t=this.rules.inline.autolink.exec(e);if(t){let r,s;return t[2]==="@"?(r=ee(t[1]),s="mailto:"+r):(r=ee(t[1]),s=r),{type:"link",raw:t[0],text:r,href:s,tokens:[{type:"text",raw:r,text:r}]}}}url(e){let t;if(t=this.rules.inline.url.exec(e)){let r,s;if(t[2]==="@")r=ee(t[0]),s="mailto:"+r;else{let i;do i=t[0],t[0]=this.rules.inline._backpedal.exec(t[0])?.[0]??"";while(i!==t[0]);r=ee(t[0]),t[1]==="www."?s="http://"+t[0]:s=t[0]}return{type:"link",raw:t[0],text:r,href:s,tokens:[{type:"text",raw:r,text:r}]}}}inlineText(e){let t=this.rules.inline.text.exec(e);if(t){let r;return this.lexer.state.inRawBlock?r=t[0]:r=ee(t[0]),{type:"text",raw:t[0],text:r}}}},qo=/^(?:[ \t]*(?:\n|$))+/,Vo=/^((?: {4}| {0,3}\t)[^\n]+(?:\n(?:[ \t]*(?:\n|$))*)?)+/,Yo=/^ {0,3}(`{3,}(?=[^`\n]*(?:\n|$))|~{3,})([^\n]*)(?:\n|$)(?:|([\s\S]*?)(?:\n|$))(?: {0,3}\1[~`]* *(?=\n|$)|$)/,ft=/^ {0,3}((?:-[\t ]*){3,}|(?:_[ \t]*){3,}|(?:\*[ \t]*){3,})(?:\n+|$)/,Jo=/^ {0,3}(#{1,6})(?=\s|$)(.*)(?:\n+|$)/,es=/(?:[*+-]|\d{1,9}[.)])/,ts=v(/^(?!bull |blockCode|fences|blockquote|heading|html)((?:.|\n(?!\s*?\n|bull |blockCode|fences|blockquote|heading|html))+?)\n {0,3}(=+|-+) *(?:\n+|$)/).replace(/bull/g,es).replace(/blockCode/g,/(?: {4}| {0,3}\t)/).replace(/fences/g,/ {0,3}(?:`{3,}|~{3,})/).replace(/blockquote/g,/ {0,3}>/).replace(/heading/g,/ {0,3}#{1,6}/).replace(/html/g,/ {0,3}<[^\n>]+>\n/).getRegex(),bn=/^([^\n]+(?:\n(?!hr|heading|lheading|blockquote|fences|list|html|table| +\n)[^\n]+)*)/,Qo=/^[^\n]+/,kn=/(?!\s*\])(?:\\.|[^\[\]\\])+/,Ko=v(/^ {0,3}\[(label)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(title))? *(?:\n+|$)/).replace("label",kn).replace("title",/(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))/).getRegex(),Zo=v(/^( {0,3}bull)([ \t][^\n]+?)?(?:\n|$)/).replace(/bull/g,es).getRegex(),Ft="address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|meta|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul",wn=/<!--(?:-?>|[\s\S]*?(?:-->|$))/,Xo=v("^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:</\\1>[^\\n]*\\n+|$)|comment[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>\\n*|$)|<![A-Z][\\s\\S]*?(?:>\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>\\n*|$)|</?(tag)(?: +|\\n|/?>)[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][\\w-]*)(?:attribute)*? */?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$)|</(?!script|pre|style|textarea)[a-z][\\w-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ 	]*)+\\n|$))","i").replace("comment",wn).replace("tag",Ft).replace("attribute",/ +[a-zA-Z:_][\w.:-]*(?: *= *"[^"\n]*"| *= *'[^'\n]*'| *= *[^\s"'=<>`]+)?/).getRegex(),ns=v(bn).replace("hr",ft).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("|lheading","").replace("|table","").replace("blockquote"," {0,3}>").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list"," {0,3}(?:[*+-]|1[.)]) ").replace("html","</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag",Ft).getRegex(),ei=v(/^( {0,3}> ?(paragraph|[^\n]*)(?:\n|$))+/).replace("paragraph",ns).getRegex(),xn={blockquote:ei,code:Vo,def:Ko,fences:Yo,heading:Jo,hr:ft,html:Xo,lheading:ts,list:Zo,newline:qo,paragraph:ns,table:pt,text:Qo},Qr=v("^ *([^\\n ].*)\\n {0,3}((?:\\| *)?:?-+:? *(?:\\| *:?-+:? *)*(?:\\| *)?)(?:\\n((?:(?! *\\n|hr|heading|blockquote|code|fences|list|html).*(?:\\n|$))*)\\n*|$)").replace("hr",ft).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("blockquote"," {0,3}>").replace("code","(?: {4}| {0,3}	)[^\\n]").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list"," {0,3}(?:[*+-]|1[.)]) ").replace("html","</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag",Ft).getRegex(),ti={...xn,table:Qr,paragraph:v(bn).replace("hr",ft).replace("heading"," {0,3}#{1,6}(?:\\s|$)").replace("|lheading","").replace("table",Qr).replace("blockquote"," {0,3}>").replace("fences"," {0,3}(?:`{3,}(?=[^`\\n]*\\n)|~{3,})[^\\n]*\\n").replace("list"," {0,3}(?:[*+-]|1[.)]) ").replace("html","</?(?:tag)(?: +|\\n|/?>)|<(?:script|pre|style|textarea|!--)").replace("tag",Ft).getRegex()},ni={...xn,html:v(`^ *(?:comment *(?:\\n|\\s*$)|<(tag)[\\s\\S]+?</\\1> *(?:\\n{2,}|\\s*$)|<tag(?:"[^"]*"|'[^']*'|\\s[^'"/>\\s]*)*?/?> *(?:\\n{2,}|\\s*$))`).replace("comment",wn).replace(/tag/g,"(?!(?:a|em|strong|small|s|cite|q|dfn|abbr|data|time|code|var|samp|kbd|sub|sup|i|b|u|mark|ruby|rt|rp|bdi|bdo|span|br|wbr|ins|del|img)\\b)\\w+(?!:|[^\\w\\s@]*@)\\b").getRegex(),def:/^ *\[([^\]]+)\]: *<?([^\s>]+)>?(?: +(["(][^\n]+[")]))? *(?:\n+|$)/,heading:/^(#{1,6})(.*)(?:\n+|$)/,fences:pt,lheading:/^(.+?)\n {0,3}(=+|-+) *(?:\n+|$)/,paragraph:v(bn).replace("hr",ft).replace("heading",` *#{1,6} *[^
+]`).replace("lheading",ts).replace("|table","").replace("blockquote"," {0,3}>").replace("|fences","").replace("|list","").replace("|html","").replace("|tag","").getRegex()},rs=/^\\([!"#$%&'()*+,\-./:;<=>?@\[\]\\^_`{|}~])/,ri=/^(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/,ss=/^( {2,}|\\)\n(?!\s*$)/,si=/^(`+|[^`])(?:(?= {2,}\n)|[\s\S]*?(?:(?=[\\<!\[`*_]|\b_|$)|[^ ](?= {2,}\n)))/,ht="\\p{P}\\p{S}",oi=v(/^((?![*_])[\spunctuation])/,"u").replace(/punctuation/g,ht).getRegex(),ii=/\[[^[\]]*?\]\((?:\\.|[^\\\(\)]|\((?:\\.|[^\\\(\)])*\))*\)|`[^`]*?`|<[^<>]*?>/g,ai=v(/^(?:\*+(?:((?!\*)[punct])|[^\s*]))|^_+(?:((?!_)[punct])|([^\s_]))/,"u").replace(/punct/g,ht).getRegex(),li=v("^[^_*]*?__[^_*]*?\\*[^_*]*?(?=__)|[^*]+(?=[^*])|(?!\\*)[punct](\\*+)(?=[\\s]|$)|[^punct\\s](\\*+)(?!\\*)(?=[punct\\s]|$)|(?!\\*)[punct\\s](\\*+)(?=[^punct\\s])|[\\s](\\*+)(?!\\*)(?=[punct])|(?!\\*)[punct](\\*+)(?!\\*)(?=[punct])|[^punct\\s](\\*+)(?=[^punct\\s])","gu").replace(/punct/g,ht).getRegex(),ci=v("^[^_*]*?\\*\\*[^_*]*?_[^_*]*?(?=\\*\\*)|[^_]+(?=[^_])|(?!_)[punct](_+)(?=[\\s]|$)|[^punct\\s](_+)(?!_)(?=[punct\\s]|$)|(?!_)[punct\\s](_+)(?=[^punct\\s])|[\\s](_+)(?!_)(?=[punct])|(?!_)[punct](_+)(?!_)(?=[punct])","gu").replace(/punct/g,ht).getRegex(),ui=v(/\\([punct])/,"gu").replace(/punct/g,ht).getRegex(),pi=v(/^<(scheme:[^\s\x00-\x1f<>]*|email)>/).replace("scheme",/[a-zA-Z][a-zA-Z0-9+.-]{1,31}/).replace("email",/[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+(@)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+(?![-_])/).getRegex(),di=v(wn).replace("(?:-->|$)","-->").getRegex(),fi=v("^comment|^</[a-zA-Z][\\w:-]*\\s*>|^<[a-zA-Z][\\w-]*(?:attribute)*?\\s*/?>|^<\\?[\\s\\S]*?\\?>|^<![a-zA-Z]+\\s[\\s\\S]*?>|^<!\\[CDATA\\[[\\s\\S]*?\\]\\]>").replace("comment",di).replace("attribute",/\s+[a-zA-Z:_][\w.:-]*(?:\s*=\s*"[^"]*"|\s*=\s*'[^']*'|\s*=\s*[^\s"'=<>`]+)?/).getRegex(),Bt=/(?:\[(?:\\.|[^\[\]\\])*\]|\\.|`[^`]*`|[^\[\]\\`])*?/,hi=v(/^!?\[(label)\]\(\s*(href)(?:\s+(title))?\s*\)/).replace("label",Bt).replace("href",/<(?:\\.|[^\n<>\\])+>|[^\s\x00-\x1f]*/).replace("title",/"(?:\\"?|[^"\\])*"|'(?:\\'?|[^'\\])*'|\((?:\\\)?|[^)\\])*\)/).getRegex(),os=v(/^!?\[(label)\]\[(ref)\]/).replace("label",Bt).replace("ref",kn).getRegex(),is=v(/^!?\[(ref)\](?:\[\])?/).replace("ref",kn).getRegex(),mi=v("reflink|nolink(?!\\()","g").replace("reflink",os).replace("nolink",is).getRegex(),En={_backpedal:pt,anyPunctuation:ui,autolink:pi,blockSkip:ii,br:ss,code:ri,del:pt,emStrongLDelim:ai,emStrongRDelimAst:li,emStrongRDelimUnd:ci,escape:rs,link:hi,nolink:is,punctuation:oi,reflink:os,reflinkSearch:mi,tag:fi,text:si,url:pt},gi={...En,link:v(/^!?\[(label)\]\((.*?)\)/).replace("label",Bt).getRegex(),reflink:v(/^!?\[(label)\]\s*\[([^\]]*)\]/).replace("label",Bt).getRegex()},gn={...En,escape:v(rs).replace("])","~|])").getRegex(),url:v(/^((?:ftp|https?):\/\/|www\.)(?:[a-zA-Z0-9\-]+\.?)+[^\s<]*|^email/,"i").replace("email",/[A-Za-z0-9._+-]+(@)[a-zA-Z0-9-_]+(?:\.[a-zA-Z0-9-_]*[a-zA-Z0-9])+(?![-_])/).getRegex(),_backpedal:/(?:[^?!.,:;*_'"~()&]+|\([^)]*\)|&(?![a-zA-Z0-9]+;$)|[?!.,:;*_'"~)]+(?!$))+/,del:/^(~~?)(?=[^\s~])((?:\\.|[^\\])*?(?:\\.|[^\s~\\]))\1(?=[^~]|$)/,text:/^([`~]+|[^`~])(?:(?= {2,}\n)|(?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)|[\s\S]*?(?:(?=[\\<!\[`*~_]|\b_|https?:\/\/|ftp:\/\/|www\.|$)|[^ ](?= {2,}\n)|[^a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-](?=[a-zA-Z0-9.!#$%&'*+\/=?_`{\|}~-]+@)))/},yi={...gn,br:v(ss).replace("{2,}","*").getRegex(),text:v(gn.text).replace("\\b_","\\b_| {2,}\\n").replace(/\{2,\}/g,"*").getRegex()},Nt={normal:xn,gfm:ti,pedantic:ni},ut={normal:En,gfm:gn,breaks:yi,pedantic:gi},re=class n{constructor(e){L(this,"tokens");L(this,"options");L(this,"state");L(this,"tokenizer");L(this,"inlineQueue");this.tokens=[],this.tokens.links=Object.create(null),this.options=e||Le,this.options.tokenizer=this.options.tokenizer||new We,this.tokenizer=this.options.tokenizer,this.tokenizer.options=this.options,this.tokenizer.lexer=this,this.inlineQueue=[],this.state={inLink:!1,inRawBlock:!1,top:!0};let t={block:Nt.normal,inline:ut.normal};this.options.pedantic?(t.block=Nt.pedantic,t.inline=ut.pedantic):this.options.gfm&&(t.block=Nt.gfm,this.options.breaks?t.inline=ut.breaks:t.inline=ut.gfm),this.tokenizer.rules=t}static get rules(){return{block:Nt,inline:ut}}static lex(e,t){return new n(t).lex(e)}static lexInline(e,t){return new n(t).inlineTokens(e)}lex(e){e=e.replace(/\r\n|\r/g,`
+`),this.blockTokens(e,this.tokens);for(let t=0;t<this.inlineQueue.length;t++){let r=this.inlineQueue[t];this.inlineTokens(r.src,r.tokens)}return this.inlineQueue=[],this.tokens}blockTokens(e,t=[],r=!1){this.options.pedantic&&(e=e.replace(/\t/g,"    ").replace(/^ +$/gm,""));let s,i,l;for(;e;)if(!(this.options.extensions&&this.options.extensions.block&&this.options.extensions.block.some(u=>(s=u.call({lexer:this},e,t))?(e=e.substring(s.raw.length),t.push(s),!0):!1))){if(s=this.tokenizer.space(e)){e=e.substring(s.raw.length),s.raw.length===1&&t.length>0?t[t.length-1].raw+=`
+`:t.push(s);continue}if(s=this.tokenizer.code(e)){e=e.substring(s.raw.length),i=t[t.length-1],i&&(i.type==="paragraph"||i.type==="text")?(i.raw+=`
+`+s.raw,i.text+=`
+`+s.text,this.inlineQueue[this.inlineQueue.length-1].src=i.text):t.push(s);continue}if(s=this.tokenizer.fences(e)){e=e.substring(s.raw.length),t.push(s);continue}if(s=this.tokenizer.heading(e)){e=e.substring(s.raw.length),t.push(s);continue}if(s=this.tokenizer.hr(e)){e=e.substring(s.raw.length),t.push(s);continue}if(s=this.tokenizer.blockquote(e)){e=e.substring(s.raw.length),t.push(s);continue}if(s=this.tokenizer.list(e)){e=e.substring(s.raw.length),t.push(s);continue}if(s=this.tokenizer.html(e)){e=e.substring(s.raw.length),t.push(s);continue}if(s=this.tokenizer.def(e)){e=e.substring(s.raw.length),i=t[t.length-1],i&&(i.type==="paragraph"||i.type==="text")?(i.raw+=`
+`+s.raw,i.text+=`
+`+s.raw,this.inlineQueue[this.inlineQueue.length-1].src=i.text):this.tokens.links[s.tag]||(this.tokens.links[s.tag]={href:s.href,title:s.title});continue}if(s=this.tokenizer.table(e)){e=e.substring(s.raw.length),t.push(s);continue}if(s=this.tokenizer.lheading(e)){e=e.substring(s.raw.length),t.push(s);continue}if(l=e,this.options.extensions&&this.options.extensions.startBlock){let u=1/0,d=e.slice(1),T;this.options.extensions.startBlock.forEach(m=>{T=m.call({lexer:this},d),typeof T=="number"&&T>=0&&(u=Math.min(u,T))}),u<1/0&&u>=0&&(l=e.substring(0,u+1))}if(this.state.top&&(s=this.tokenizer.paragraph(l))){i=t[t.length-1],r&&i?.type==="paragraph"?(i.raw+=`
+`+s.raw,i.text+=`
+`+s.text,this.inlineQueue.pop(),this.inlineQueue[this.inlineQueue.length-1].src=i.text):t.push(s),r=l.length!==e.length,e=e.substring(s.raw.length);continue}if(s=this.tokenizer.text(e)){e=e.substring(s.raw.length),i=t[t.length-1],i&&i.type==="text"?(i.raw+=`
+`+s.raw,i.text+=`
+`+s.text,this.inlineQueue.pop(),this.inlineQueue[this.inlineQueue.length-1].src=i.text):t.push(s);continue}if(e){let u="Infinite loop on byte: "+e.charCodeAt(0);if(this.options.silent){console.error(u);break}else throw new Error(u)}}return this.state.top=!0,t}inline(e,t=[]){return this.inlineQueue.push({src:e,tokens:t}),t}inlineTokens(e,t=[]){let r,s,i,l=e,u,d,T;if(this.tokens.links){let m=Object.keys(this.tokens.links);if(m.length>0)for(;(u=this.tokenizer.rules.inline.reflinkSearch.exec(l))!=null;)m.includes(u[0].slice(u[0].lastIndexOf("[")+1,-1))&&(l=l.slice(0,u.index)+"["+"a".repeat(u[0].length-2)+"]"+l.slice(this.tokenizer.rules.inline.reflinkSearch.lastIndex))}for(;(u=this.tokenizer.rules.inline.blockSkip.exec(l))!=null;)l=l.slice(0,u.index)+"["+"a".repeat(u[0].length-2)+"]"+l.slice(this.tokenizer.rules.inline.blockSkip.lastIndex);for(;(u=this.tokenizer.rules.inline.anyPunctuation.exec(l))!=null;)l=l.slice(0,u.index)+"++"+l.slice(this.tokenizer.rules.inline.anyPunctuation.lastIndex);for(;e;)if(d||(T=""),d=!1,!(this.options.extensions&&this.options.extensions.inline&&this.options.extensions.inline.some(m=>(r=m.call({lexer:this},e,t))?(e=e.substring(r.raw.length),t.push(r),!0):!1))){if(r=this.tokenizer.escape(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.tag(e)){e=e.substring(r.raw.length),s=t[t.length-1],s&&r.type==="text"&&s.type==="text"?(s.raw+=r.raw,s.text+=r.text):t.push(r);continue}if(r=this.tokenizer.link(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.reflink(e,this.tokens.links)){e=e.substring(r.raw.length),s=t[t.length-1],s&&r.type==="text"&&s.type==="text"?(s.raw+=r.raw,s.text+=r.text):t.push(r);continue}if(r=this.tokenizer.emStrong(e,l,T)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.codespan(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.br(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.del(e)){e=e.substring(r.raw.length),t.push(r);continue}if(r=this.tokenizer.autolink(e)){e=e.substring(r.raw.length),t.push(r);continue}if(!this.state.inLink&&(r=this.tokenizer.url(e))){e=e.substring(r.raw.length),t.push(r);continue}if(i=e,this.options.extensions&&this.options.extensions.startInline){let m=1/0,g=e.slice(1),k;this.options.extensions.startInline.forEach(A=>{k=A.call({lexer:this},g),typeof k=="number"&&k>=0&&(m=Math.min(m,k))}),m<1/0&&m>=0&&(i=e.substring(0,m+1))}if(r=this.tokenizer.inlineText(i)){e=e.substring(r.raw.length),r.raw.slice(-1)!=="_"&&(T=r.raw.slice(-1)),d=!0,s=t[t.length-1],s&&s.type==="text"?(s.raw+=r.raw,s.text+=r.text):t.push(r);continue}if(e){let m="Infinite loop on byte: "+e.charCodeAt(0);if(this.options.silent){console.error(m);break}else throw new Error(m)}}return t}},qe=class{constructor(e){L(this,"options");L(this,"parser");this.options=e||Le}space(e){return""}code({text:e,lang:t,escaped:r}){let s=(t||"").match(/^\S*/)?.[0],i=e.replace(/\n$/,"")+`
+`;return s?'<pre><code class="language-'+ee(s)+'">'+(r?i:ee(i,!0))+`</code></pre>
+`:"<pre><code>"+(r?i:ee(i,!0))+`</code></pre>
+`}blockquote({tokens:e}){return`<blockquote>
+${this.parser.parse(e)}</blockquote>
+`}html({text:e}){return e}heading({tokens:e,depth:t}){return`<h${t}>${this.parser.parseInline(e)}</h${t}>
+`}hr(e){return`<hr>
+`}list(e){let t=e.ordered,r=e.start,s="";for(let u=0;u<e.items.length;u++){let d=e.items[u];s+=this.listitem(d)}let i=t?"ol":"ul",l=t&&r!==1?' start="'+r+'"':"";return"<"+i+l+`>
+`+s+"</"+i+`>
+`}listitem(e){let t="";if(e.task){let r=this.checkbox({checked:!!e.checked});e.loose?e.tokens.length>0&&e.tokens[0].type==="paragraph"?(e.tokens[0].text=r+" "+e.tokens[0].text,e.tokens[0].tokens&&e.tokens[0].tokens.length>0&&e.tokens[0].tokens[0].type==="text"&&(e.tokens[0].tokens[0].text=r+" "+e.tokens[0].tokens[0].text)):e.tokens.unshift({type:"text",raw:r+" ",text:r+" "}):t+=r+" "}return t+=this.parser.parse(e.tokens,!!e.loose),`<li>${t}</li>
+`}checkbox({checked:e}){return"<input "+(e?'checked="" ':"")+'disabled="" type="checkbox">'}paragraph({tokens:e}){return`<p>${this.parser.parseInline(e)}</p>
+`}table(e){let t="",r="";for(let i=0;i<e.header.length;i++)r+=this.tablecell(e.header[i]);t+=this.tablerow({text:r});let s="";for(let i=0;i<e.rows.length;i++){let l=e.rows[i];r="";for(let u=0;u<l.length;u++)r+=this.tablecell(l[u]);s+=this.tablerow({text:r})}return s&&(s=`<tbody>${s}</tbody>`),`<table>
+<thead>
+`+t+`</thead>
+`+s+`</table>
+`}tablerow({text:e}){return`<tr>
+${e}</tr>
+`}tablecell(e){let t=this.parser.parseInline(e.tokens),r=e.header?"th":"td";return(e.align?`<${r} align="${e.align}">`:`<${r}>`)+t+`</${r}>
+`}strong({tokens:e}){return`<strong>${this.parser.parseInline(e)}</strong>`}em({tokens:e}){return`<em>${this.parser.parseInline(e)}</em>`}codespan({text:e}){return`<code>${e}</code>`}br(e){return"<br>"}del({tokens:e}){return`<del>${this.parser.parseInline(e)}</del>`}link({href:e,title:t,tokens:r}){let s=this.parser.parseInline(r),i=Vr(e);if(i===null)return s;e=i;let l='<a href="'+e+'"';return t&&(l+=' title="'+t+'"'),l+=">"+s+"</a>",l}image({href:e,title:t,text:r}){let s=Vr(e);if(s===null)return r;e=s;let i=`<img src="${e}" alt="${r}"`;return t&&(i+=` title="${t}"`),i+=">",i}text(e){return"tokens"in e&&e.tokens?this.parser.parseInline(e.tokens):e.text}},dt=class{strong({text:e}){return e}em({text:e}){return e}codespan({text:e}){return e}del({text:e}){return e}html({text:e}){return e}text({text:e}){return e}link({text:e}){return""+e}image({text:e}){return""+e}br(){return""}},se=class n{constructor(e){L(this,"options");L(this,"renderer");L(this,"textRenderer");this.options=e||Le,this.options.renderer=this.options.renderer||new qe,this.renderer=this.options.renderer,this.renderer.options=this.options,this.renderer.parser=this,this.textRenderer=new dt}static parse(e,t){return new n(t).parse(e)}static parseInline(e,t){return new n(t).parseInline(e)}parse(e,t=!0){let r="";for(let s=0;s<e.length;s++){let i=e[s];if(this.options.extensions&&this.options.extensions.renderers&&this.options.extensions.renderers[i.type]){let u=i,d=this.options.extensions.renderers[u.type].call({parser:this},u);if(d!==!1||!["space","hr","heading","code","table","blockquote","list","html","paragraph","text"].includes(u.type)){r+=d||"";continue}}let l=i;switch(l.type){case"space":{r+=this.renderer.space(l);continue}case"hr":{r+=this.renderer.hr(l);continue}case"heading":{r+=this.renderer.heading(l);continue}case"code":{r+=this.renderer.code(l);continue}case"table":{r+=this.renderer.table(l);continue}case"blockquote":{r+=this.renderer.blockquote(l);continue}case"list":{r+=this.renderer.list(l);continue}case"html":{r+=this.renderer.html(l);continue}case"paragraph":{r+=this.renderer.paragraph(l);continue}case"text":{let u=l,d=this.renderer.text(u);for(;s+1<e.length&&e[s+1].type==="text";)u=e[++s],d+=`
+`+this.renderer.text(u);t?r+=this.renderer.paragraph({type:"paragraph",raw:d,text:d,tokens:[{type:"text",raw:d,text:d}]}):r+=d;continue}default:{let u='Token with "'+l.type+'" type was not found.';if(this.options.silent)return console.error(u),"";throw new Error(u)}}}return r}parseInline(e,t){t=t||this.renderer;let r="";for(let s=0;s<e.length;s++){let i=e[s];if(this.options.extensions&&this.options.extensions.renderers&&this.options.extensions.renderers[i.type]){let u=this.options.extensions.renderers[i.type].call({parser:this},i);if(u!==!1||!["escape","html","link","image","strong","em","codespan","br","del","text"].includes(i.type)){r+=u||"";continue}}let l=i;switch(l.type){case"escape":{r+=t.text(l);break}case"html":{r+=t.html(l);break}case"link":{r+=t.link(l);break}case"image":{r+=t.image(l);break}case"strong":{r+=t.strong(l);break}case"em":{r+=t.em(l);break}case"codespan":{r+=t.codespan(l);break}case"br":{r+=t.br(l);break}case"del":{r+=t.del(l);break}case"text":{r+=t.text(l);break}default:{let u='Token with "'+l.type+'" type was not found.';if(this.options.silent)return console.error(u),"";throw new Error(u)}}}return r}},ve=class{constructor(e){L(this,"options");L(this,"block");this.options=e||Le}preprocess(e){return e}postprocess(e){return e}processAllTokens(e){return e}provideLexer(){return this.block?re.lex:re.lexInline}provideParser(){return this.block?se.parse:se.parseInline}};L(ve,"passThroughHooks",new Set(["preprocess","postprocess","processAllTokens"]));var yn=class{constructor(...e){L(this,"defaults",Tn());L(this,"options",this.setOptions);L(this,"parse",this.parseMarkdown(!0));L(this,"parseInline",this.parseMarkdown(!1));L(this,"Parser",se);L(this,"Renderer",qe);L(this,"TextRenderer",dt);L(this,"Lexer",re);L(this,"Tokenizer",We);L(this,"Hooks",ve);this.use(...e)}walkTokens(e,t){let r=[];for(let s of e)switch(r=r.concat(t.call(this,s)),s.type){case"table":{let i=s;for(let l of i.header)r=r.concat(this.walkTokens(l.tokens,t));for(let l of i.rows)for(let u of l)r=r.concat(this.walkTokens(u.tokens,t));break}case"list":{let i=s;r=r.concat(this.walkTokens(i.items,t));break}default:{let i=s;this.defaults.extensions?.childTokens?.[i.type]?this.defaults.extensions.childTokens[i.type].forEach(l=>{let u=i[l].flat(1/0);r=r.concat(this.walkTokens(u,t))}):i.tokens&&(r=r.concat(this.walkTokens(i.tokens,t)))}}return r}use(...e){let t=this.defaults.extensions||{renderers:{},childTokens:{}};return e.forEach(r=>{let s={...r};if(s.async=this.defaults.async||s.async||!1,r.extensions&&(r.extensions.forEach(i=>{if(!i.name)throw new Error("extension name required");if("renderer"in i){let l=t.renderers[i.name];l?t.renderers[i.name]=function(...u){let d=i.renderer.apply(this,u);return d===!1&&(d=l.apply(this,u)),d}:t.renderers[i.name]=i.renderer}if("tokenizer"in i){if(!i.level||i.level!=="block"&&i.level!=="inline")throw new Error("extension level must be 'block' or 'inline'");let l=t[i.level];l?l.unshift(i.tokenizer):t[i.level]=[i.tokenizer],i.start&&(i.level==="block"?t.startBlock?t.startBlock.push(i.start):t.startBlock=[i.start]:i.level==="inline"&&(t.startInline?t.startInline.push(i.start):t.startInline=[i.start]))}"childTokens"in i&&i.childTokens&&(t.childTokens[i.name]=i.childTokens)}),s.extensions=t),r.renderer){let i=this.defaults.renderer||new qe(this.defaults);for(let l in r.renderer){if(!(l in i))throw new Error(`renderer '${l}' does not exist`);if(["options","parser"].includes(l))continue;let u=l,d=r.renderer[u],T=i[u];i[u]=(...m)=>{let g=d.apply(i,m);return g===!1&&(g=T.apply(i,m)),g||""}}s.renderer=i}if(r.tokenizer){let i=this.defaults.tokenizer||new We(this.defaults);for(let l in r.tokenizer){if(!(l in i))throw new Error(`tokenizer '${l}' does not exist`);if(["options","rules","lexer"].includes(l))continue;let u=l,d=r.tokenizer[u],T=i[u];i[u]=(...m)=>{let g=d.apply(i,m);return g===!1&&(g=T.apply(i,m)),g}}s.tokenizer=i}if(r.hooks){let i=this.defaults.hooks||new ve;for(let l in r.hooks){if(!(l in i))throw new Error(`hook '${l}' does not exist`);if(["options","block"].includes(l))continue;let u=l,d=r.hooks[u],T=i[u];ve.passThroughHooks.has(l)?i[u]=m=>{if(this.defaults.async)return Promise.resolve(d.call(i,m)).then(k=>T.call(i,k));let g=d.call(i,m);return T.call(i,g)}:i[u]=(...m)=>{let g=d.apply(i,m);return g===!1&&(g=T.apply(i,m)),g}}s.hooks=i}if(r.walkTokens){let i=this.defaults.walkTokens,l=r.walkTokens;s.walkTokens=function(u){let d=[];return d.push(l.call(this,u)),i&&(d=d.concat(i.call(this,u))),d}}this.defaults={...this.defaults,...s}}),this}setOptions(e){return this.defaults={...this.defaults,...e},this}lexer(e,t){return re.lex(e,t??this.defaults)}parser(e,t){return se.parse(e,t??this.defaults)}parseMarkdown(e){return(r,s)=>{let i={...s},l={...this.defaults,...i},u=this.onError(!!l.silent,!!l.async);if(this.defaults.async===!0&&i.async===!1)return u(new Error("marked(): The async option was set to true by an extension. Remove async: false from the parse options object to return a Promise."));if(typeof r>"u"||r===null)return u(new Error("marked(): input parameter is undefined or null"));if(typeof r!="string")return u(new Error("marked(): input parameter is of type "+Object.prototype.toString.call(r)+", string expected"));l.hooks&&(l.hooks.options=l,l.hooks.block=e);let d=l.hooks?l.hooks.provideLexer():e?re.lex:re.lexInline,T=l.hooks?l.hooks.provideParser():e?se.parse:se.parseInline;if(l.async)return Promise.resolve(l.hooks?l.hooks.preprocess(r):r).then(m=>d(m,l)).then(m=>l.hooks?l.hooks.processAllTokens(m):m).then(m=>l.walkTokens?Promise.all(this.walkTokens(m,l.walkTokens)).then(()=>m):m).then(m=>T(m,l)).then(m=>l.hooks?l.hooks.postprocess(m):m).catch(u);try{l.hooks&&(r=l.hooks.preprocess(r));let m=d(r,l);l.hooks&&(m=l.hooks.processAllTokens(m)),l.walkTokens&&this.walkTokens(m,l.walkTokens);let g=T(m,l);return l.hooks&&(g=l.hooks.postprocess(g)),g}catch(m){return u(m)}}}onError(e,t){return r=>{if(r.message+=`
+Please report this to https://github.com/markedjs/marked.`,e){let s="<p>An error occurred:</p><pre>"+ee(r.message+"",!0)+"</pre>";return t?Promise.resolve(s):s}if(t)return Promise.reject(r);throw r}}},Ce=new yn;function _(n,e){return Ce.parse(n,e)}_.options=_.setOptions=function(n){return Ce.setOptions(n),_.defaults=Ce.defaults,Kr(_.defaults),_};_.getDefaults=Tn;_.defaults=Le;_.use=function(...n){return Ce.use(...n),_.defaults=Ce.defaults,Kr(_.defaults),_};_.walkTokens=function(n,e){return Ce.walkTokens(n,e)};_.parseInline=Ce.parseInline;_.Parser=se;_.parser=se.parse;_.Renderer=qe;_.TextRenderer=dt;_.Lexer=re;_.lexer=re.lex;_.Tokenizer=We;_.Hooks=ve;_.parse=_;var hl=_.options,ml=_.setOptions,gl=_.use,yl=_.walkTokens,Tl=_.parseInline;var bl=se.parse,kl=re.lex;function as(n,e){(e==null||e>n.length)&&(e=n.length);for(var t=0,r=Array(e);t<e;t++)r[t]=n[t];return r}function Ti(n){if(Array.isArray(n))return n}function bi(n,e){var t=n==null?null:typeof Symbol<"u"&&n[Symbol.iterator]||n["@@iterator"];if(t!=null){var r,s,i,l,u=[],d=!0,T=!1;try{if(i=(t=t.call(n)).next,e!==0)for(;!(d=(r=i.call(t)).done)&&(u.push(r.value),u.length!==e);d=!0);}catch(m){T=!0,s=m}finally{try{if(!d&&t.return!=null&&(l=t.return(),Object(l)!==l))return}finally{if(T)throw s}}return u}}function ki(){throw new TypeError(`Invalid attempt to destructure non-iterable instance.
+In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`)}function wi(n,e){return Ti(n)||bi(n,e)||xi(n,e)||ki()}function xi(n,e){if(n){if(typeof n=="string")return as(n,e);var t={}.toString.call(n).slice(8,-1);return t==="Object"&&n.constructor&&(t=n.constructor.name),t==="Map"||t==="Set"?Array.from(n):t==="Arguments"||/^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t)?as(n,e):void 0}}var ws=Object.entries,ls=Object.setPrototypeOf,Ei=Object.isFrozen,Si=Object.getPrototypeOf,_i=Object.getOwnPropertyDescriptor,W=Object.freeze,q=Object.seal,Ye=Object.create,xs=typeof Reflect<"u"&&Reflect,Ln=xs.apply,Rn=xs.construct;W||(W=function(e){return e});q||(q=function(e){return e});Ln||(Ln=function(e,t){for(var r=arguments.length,s=new Array(r>2?r-2:0),i=2;i<r;i++)s[i-2]=arguments[i];return e.apply(t,s)});Rn||(Rn=function(e){for(var t=arguments.length,r=new Array(t>1?t-1:0),s=1;s<t;s++)r[s-1]=arguments[s];return new e(...r)});var mt=z(Array.prototype.forEach),Ai=z(Array.prototype.lastIndexOf),cs=z(Array.prototype.pop),Ve=z(Array.prototype.push),vi=z(Array.prototype.splice),we=Array.isArray,Tt=z(String.prototype.toLowerCase),Sn=z(String.prototype.toString),us=z(String.prototype.match),gt=z(String.prototype.replace),ps=z(String.prototype.indexOf),Ci=z(String.prototype.trim),Li=z(Number.prototype.toString),Ri=z(Boolean.prototype.toString),ds=typeof BigInt>"u"?null:z(BigInt.prototype.toString),fs=typeof Symbol>"u"?null:z(Symbol.prototype.toString),j=z(Object.prototype.hasOwnProperty),yt=z(Object.prototype.toString),G=z(RegExp.prototype.test),Re=Oi(TypeError);function z(n){return function(e){e instanceof RegExp&&(e.lastIndex=0);for(var t=arguments.length,r=new Array(t>1?t-1:0),s=1;s<t;s++)r[s-1]=arguments[s];return Ln(n,e,r)}}function Oi(n){return function(){for(var e=arguments.length,t=new Array(e),r=0;r<e;r++)t[r]=arguments[r];return Rn(n,t)}}function E(n,e){let t=arguments.length>2&&arguments[2]!==void 0?arguments[2]:Tt;if(ls&&ls(n,null),!we(e))return n;let r=e.length;for(;r--;){let s=e[r];if(typeof s=="string"){let i=t(s);i!==s&&(Ei(e)||(e[r]=i),s=i)}n[s]=!0}return n}function Ii(n){for(let e=0;e<n.length;e++)j(n,e)||(n[e]=null);return n}function J(n){let e=Ye(null);for(let r of ws(n)){var t=wi(r,2);let s=t[0],i=t[1];j(n,s)&&(we(i)?e[s]=Ii(i):i&&typeof i=="object"&&i.constructor===Object?e[s]=J(i):e[s]=i)}return e}function Mi(n){switch(typeof n){case"string":return n;case"number":return Li(n);case"boolean":return Ri(n);case"bigint":return ds?ds(n):"0";case"symbol":return fs?fs(n):"Symbol()";case"undefined":return yt(n);case"function":case"object":{if(n===null)return yt(n);let e=n,t=ce(e,"toString");if(typeof t=="function"){let r=t(e);return typeof r=="string"?r:yt(r)}return yt(n)}default:return yt(n)}}function ce(n,e){for(;n!==null;){let r=_i(n,e);if(r){if(r.get)return z(r.get);if(typeof r.value=="function")return z(r.value)}n=Si(n)}function t(){return null}return t}function Di(n){try{return G(n,""),!0}catch{return!1}}var hs=W(["a","abbr","acronym","address","area","article","aside","audio","b","bdi","bdo","big","blink","blockquote","body","br","button","canvas","caption","center","cite","code","col","colgroup","content","data","datalist","dd","decorator","del","details","dfn","dialog","dir","div","dl","dt","element","em","fieldset","figcaption","figure","font","footer","form","h1","h2","h3","h4","h5","h6","head","header","hgroup","hr","html","i","img","input","ins","kbd","label","legend","li","main","map","mark","marquee","menu","menuitem","meter","nav","nobr","ol","optgroup","option","output","p","picture","pre","progress","q","rp","rt","ruby","s","samp","search","section","select","shadow","slot","small","source","spacer","span","strike","strong","style","sub","summary","sup","table","tbody","td","template","textarea","tfoot","th","thead","time","tr","track","tt","u","ul","var","video","wbr"]),_n=W(["svg","a","altglyph","altglyphdef","altglyphitem","animatecolor","animatemotion","animatetransform","circle","clippath","defs","desc","ellipse","enterkeyhint","exportparts","filter","font","g","glyph","glyphref","hkern","image","inputmode","line","lineargradient","marker","mask","metadata","mpath","part","path","pattern","polygon","polyline","radialgradient","rect","stop","style","switch","symbol","text","textpath","title","tref","tspan","view","vkern"]),An=W(["feBlend","feColorMatrix","feComponentTransfer","feComposite","feConvolveMatrix","feDiffuseLighting","feDisplacementMap","feDistantLight","feDropShadow","feFlood","feFuncA","feFuncB","feFuncG","feFuncR","feGaussianBlur","feImage","feMerge","feMergeNode","feMorphology","feOffset","fePointLight","feSpecularLighting","feSpotLight","feTile","feTurbulence"]),Pi=W(["animate","color-profile","cursor","discard","font-face","font-face-format","font-face-name","font-face-src","font-face-uri","foreignobject","hatch","hatchpath","mesh","meshgradient","meshpatch","meshrow","missing-glyph","script","set","solidcolor","unknown","use"]),vn=W(["math","menclose","merror","mfenced","mfrac","mglyph","mi","mlabeledtr","mmultiscripts","mn","mo","mover","mpadded","mphantom","mroot","mrow","ms","mspace","msqrt","mstyle","msub","msup","msubsup","mtable","mtd","mtext","mtr","munder","munderover","mprescripts"]),Ni=W(["maction","maligngroup","malignmark","mlongdiv","mscarries","mscarry","msgroup","mstack","msline","msrow","semantics","annotation","annotation-xml","mprescripts","none"]),ms=W(["#text"]),gs=W(["accept","action","align","alt","autocapitalize","autocomplete","autopictureinpicture","autoplay","background","bgcolor","border","capture","cellpadding","cellspacing","checked","cite","class","clear","color","cols","colspan","command","commandfor","controls","controlslist","coords","crossorigin","datetime","decoding","default","dir","disabled","disablepictureinpicture","disableremoteplayback","download","draggable","enctype","enterkeyhint","exportparts","face","for","headers","height","hidden","high","href","hreflang","id","inert","inputmode","integrity","ismap","kind","label","lang","list","loading","loop","low","max","maxlength","media","method","min","minlength","multiple","muted","name","nonce","noshade","novalidate","nowrap","open","optimum","part","pattern","placeholder","playsinline","popover","popovertarget","popovertargetaction","poster","preload","pubdate","radiogroup","readonly","rel","required","rev","reversed","role","rows","rowspan","spellcheck","scope","selected","shape","size","sizes","slot","span","srclang","start","src","srcset","step","style","summary","tabindex","title","translate","type","usemap","valign","value","width","wrap","xmlns"]),Cn=W(["accent-height","accumulate","additive","alignment-baseline","amplitude","ascent","attributename","attributetype","azimuth","basefrequency","baseline-shift","begin","bias","by","class","clip","clippathunits","clip-path","clip-rule","color","color-interpolation","color-interpolation-filters","color-profile","color-rendering","cx","cy","d","dx","dy","diffuseconstant","direction","display","divisor","dur","edgemode","elevation","end","exponent","fill","fill-opacity","fill-rule","filter","filterunits","flood-color","flood-opacity","font-family","font-size","font-size-adjust","font-stretch","font-style","font-variant","font-weight","fx","fy","g1","g2","glyph-name","glyphref","gradientunits","gradienttransform","height","href","id","image-rendering","in","in2","intercept","k","k1","k2","k3","k4","kerning","keypoints","keysplines","keytimes","lang","lengthadjust","letter-spacing","kernelmatrix","kernelunitlength","lighting-color","local","marker-end","marker-mid","marker-start","markerheight","markerunits","markerwidth","maskcontentunits","maskunits","max","mask","mask-type","media","method","mode","min","name","numoctaves","offset","operator","opacity","order","orient","orientation","origin","overflow","paint-order","path","pathlength","patterncontentunits","patterntransform","patternunits","points","preservealpha","preserveaspectratio","primitiveunits","r","rx","ry","radius","refx","refy","repeatcount","repeatdur","restart","result","rotate","scale","seed","shape-rendering","slope","specularconstant","specularexponent","spreadmethod","startoffset","stddeviation","stitchtiles","stop-color","stop-opacity","stroke-dasharray","stroke-dashoffset","stroke-linecap","stroke-linejoin","stroke-miterlimit","stroke-opacity","stroke","stroke-width","style","surfacescale","systemlanguage","tabindex","tablevalues","targetx","targety","transform","transform-origin","text-anchor","text-decoration","text-rendering","textlength","type","u1","u2","unicode","values","viewbox","visibility","version","vert-adv-y","vert-origin-x","vert-origin-y","width","word-spacing","wrap","writing-mode","xchannelselector","ychannelselector","x","x1","x2","xmlns","y","y1","y2","z","zoomandpan"]),ys=W(["accent","accentunder","align","bevelled","close","columnalign","columnlines","columnspacing","columnspan","denomalign","depth","dir","display","displaystyle","encoding","fence","frame","height","href","id","largeop","length","linethickness","lquote","lspace","mathbackground","mathcolor","mathsize","mathvariant","maxsize","minsize","movablelimits","notation","numalign","open","rowalign","rowlines","rowspacing","rowspan","rspace","rquote","scriptlevel","scriptminsize","scriptsizemultiplier","selection","separator","separators","stretchy","subscriptshift","supscriptshift","symmetric","voffset","width","xmlns"]),zt=W(["xlink:href","xml:id","xlink:title","xml:space","xmlns:xlink"]),Bi=q(/{{[\w\W]*|^[\w\W]*}}/g),Fi=q(/<%[\w\W]*|^[\w\W]*%>/g),zi=q(/\${[\w\W]*/g),Ui=q(/^data-[\-\w.\u00B7-\uFFFF]+$/),Hi=q(/^aria-[\-\w]+$/),Ts=q(/^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i),$i=q(/^(?:\w+script|data):/i),ji=q(/[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g),Gi=q(/^html$/i),Wi=q(/^[a-z][.\w]*(-[.\w]+)+$/i),bs=q(/<[/\w!]/g),qi=q(/<[/\w]/g),Vi=q(/<\/no(script|embed|frames)/i),Yi=q(/\/>/i),le={element:1,attribute:2,text:3,cdataSection:4,entityReference:5,entityNode:6,processingInstruction:7,comment:8,document:9,documentType:10,documentFragment:11,notation:12},Ji=function(){return typeof window>"u"?null:window},Qi=function(e,t){if(typeof e!="object"||typeof e.createPolicy!="function")return null;let r=null,s="data-tt-policy-suffix";t&&t.hasAttribute(s)&&(r=t.getAttribute(s));let i="dompurify"+(r?"#"+r:"");try{return e.createPolicy(i,{createHTML(l){return l},createScriptURL(l){return l}})}catch{return console.warn("TrustedTypes policy "+i+" could not be created."),null}},ks=function(){return{afterSanitizeAttributes:[],afterSanitizeElements:[],afterSanitizeShadowDOM:[],beforeSanitizeAttributes:[],beforeSanitizeElements:[],beforeSanitizeShadowDOM:[],uponSanitizeAttribute:[],uponSanitizeElement:[],uponSanitizeShadowNode:[]}},ke=function(e,t,r,s){return j(e,t)&&we(e[t])?E(s.base?J(s.base):{},e[t],s.transform):r};function Es(){let n=arguments.length>0&&arguments[0]!==void 0?arguments[0]:Ji(),e=h=>Es(h);if(e.version="3.4.11",e.removed=[],!n||!n.document||n.document.nodeType!==le.document||!n.Element)return e.isSupported=!1,e;let t=n.document,r=t,s=r.currentScript;n.DocumentFragment;let i=n.HTMLTemplateElement,l=n.Node,u=n.Element,d=n.NodeFilter,T=n.NamedNodeMap;T===void 0&&(n.NamedNodeMap||n.MozNamedAttrMap),n.HTMLFormElement;let m=n.DOMParser,g=n.trustedTypes,k=u.prototype,A=ce(k,"cloneNode"),w=ce(k,"remove"),O=ce(k,"nextSibling"),B=ce(k,"childNodes"),de=ce(k,"parentNode"),rt=ce(k,"shadowRoot"),Fe=ce(k,"attributes"),V=l&&l.prototype?ce(l.prototype,"nodeType"):null,oe=l&&l.prototype?ce(l.prototype,"nodeName"):null;if(typeof i=="function"){let h=t.createElement("template");h.content&&h.content.ownerDocument&&(t=h.content.ownerDocument)}let H,X="",Qt,yr=!1,st=0,Tr=function(){if(st>0)throw Re('A configured TRUSTED_TYPES_POLICY callback (createHTML or createScriptURL) must not call DOMPurify.sanitize, as that causes infinite recursion. Do not pass a policy whose callbacks wrap DOMPurify as TRUSTED_TYPES_POLICY; see the "DOMPurify and Trusted Types" section of the README.')},ze=function(a){Tr(),st++;try{return H.createHTML(a)}finally{st--}},co=function(a){Tr(),st++;try{return H.createScriptURL(a)}finally{st--}},uo=function(){return yr||(Qt=Qi(g,s),yr=!0),Qt},Ct=t,Kt=Ct.implementation,br=Ct.createNodeIterator,po=Ct.createDocumentFragment,fo=Ct.getElementsByTagName,ho=r.importNode,N=ks();e.isSupported=typeof ws=="function"&&typeof de=="function"&&Kt&&Kt.createHTMLDocument!==void 0;let mo=Bi,go=Fi,yo=zi,To=Ui,bo=Hi,ko=$i,kr=ji,wo=Wi,wr=Ts,I=null,xr=E({},[...hs,..._n,...An,...vn,...ms]),M=null,Er=E({},[...gs,...Cn,...ys,...zt]),D=Object.seal(Ye(null,{tagNameCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},attributeNameCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},allowCustomizedBuiltInElements:{writable:!0,configurable:!1,enumerable:!0,value:!1}})),ot=null,Sr=null,ye=Object.seal(Ye(null,{tagCheck:{writable:!0,configurable:!1,enumerable:!0,value:null},attributeCheck:{writable:!0,configurable:!1,enumerable:!0,value:null}})),_r=!0,Zt=!0,Ar=!1,vr=!0,Te=!1,it=!0,_e=!1,Xt=!1,en=null,tn=null,nn=!1,Ue=!1,Lt=!1,Rt=!1,Cr=!0,Lr=!1,Rr="user-content-",rn=!0,sn=!1,He={},ie=null,on=E({},["annotation-xml","audio","colgroup","desc","foreignobject","head","iframe","math","mi","mn","mo","ms","mtext","noembed","noframes","noscript","plaintext","script","selectedcontent","style","svg","template","thead","title","video","xmp"]),Or=null,Ir=E({},["audio","video","img","source","image","track"]),an=null,Mr=E({},["alt","class","for","id","label","name","pattern","placeholder","role","summary","title","value","style","xmlns"]),Ot="http://www.w3.org/1998/Math/MathML",It="http://www.w3.org/2000/svg",ae="http://www.w3.org/1999/xhtml",$e=ae,ln=!1,cn=null,xo=E({},[Ot,It,ae],Sn),Dr=W(["mi","mo","mn","ms","mtext"]),un=E({},Dr),Pr=W(["annotation-xml"]),pn=E({},Pr),Eo=E({},["title","style","font","a","script"]),at=null,So=["application/xhtml+xml","text/html"],_o="text/html",P=null,je=null,Ao=t.createElement("form"),Nr=function(a){return a instanceof RegExp||a instanceof Function},dn=function(){let a=arguments.length>0&&arguments[0]!==void 0?arguments[0]:{};if(je&&je===a)return;(!a||typeof a!="object")&&(a={}),a=J(a),at=So.indexOf(a.PARSER_MEDIA_TYPE)===-1?_o:a.PARSER_MEDIA_TYPE,P=at==="application/xhtml+xml"?Sn:Tt,I=ke(a,"ALLOWED_TAGS",xr,{transform:P}),M=ke(a,"ALLOWED_ATTR",Er,{transform:P}),cn=ke(a,"ALLOWED_NAMESPACES",xo,{transform:Sn}),an=ke(a,"ADD_URI_SAFE_ATTR",Mr,{transform:P,base:Mr}),Or=ke(a,"ADD_DATA_URI_TAGS",Ir,{transform:P,base:Ir}),ie=ke(a,"FORBID_CONTENTS",on,{transform:P}),ot=ke(a,"FORBID_TAGS",J({}),{transform:P}),Sr=ke(a,"FORBID_ATTR",J({}),{transform:P}),He=j(a,"USE_PROFILES")?a.USE_PROFILES&&typeof a.USE_PROFILES=="object"?J(a.USE_PROFILES):a.USE_PROFILES:!1,_r=a.ALLOW_ARIA_ATTR!==!1,Zt=a.ALLOW_DATA_ATTR!==!1,Ar=a.ALLOW_UNKNOWN_PROTOCOLS||!1,vr=a.ALLOW_SELF_CLOSE_IN_ATTR!==!1,Te=a.SAFE_FOR_TEMPLATES||!1,it=a.SAFE_FOR_XML!==!1,_e=a.WHOLE_DOCUMENT||!1,Ue=a.RETURN_DOM||!1,Lt=a.RETURN_DOM_FRAGMENT||!1,Rt=a.RETURN_TRUSTED_TYPE||!1,nn=a.FORCE_BODY||!1,Cr=a.SANITIZE_DOM!==!1,Lr=a.SANITIZE_NAMED_PROPS||!1,rn=a.KEEP_CONTENT!==!1,sn=a.IN_PLACE||!1,wr=Di(a.ALLOWED_URI_REGEXP)?a.ALLOWED_URI_REGEXP:Ts,$e=typeof a.NAMESPACE=="string"?a.NAMESPACE:ae,un=j(a,"MATHML_TEXT_INTEGRATION_POINTS")&&a.MATHML_TEXT_INTEGRATION_POINTS&&typeof a.MATHML_TEXT_INTEGRATION_POINTS=="object"?J(a.MATHML_TEXT_INTEGRATION_POINTS):E({},Dr),pn=j(a,"HTML_INTEGRATION_POINTS")&&a.HTML_INTEGRATION_POINTS&&typeof a.HTML_INTEGRATION_POINTS=="object"?J(a.HTML_INTEGRATION_POINTS):E({},Pr);let c=j(a,"CUSTOM_ELEMENT_HANDLING")&&a.CUSTOM_ELEMENT_HANDLING&&typeof a.CUSTOM_ELEMENT_HANDLING=="object"?J(a.CUSTOM_ELEMENT_HANDLING):Ye(null);if(D=Ye(null),j(c,"tagNameCheck")&&Nr(c.tagNameCheck)&&(D.tagNameCheck=c.tagNameCheck),j(c,"attributeNameCheck")&&Nr(c.attributeNameCheck)&&(D.attributeNameCheck=c.attributeNameCheck),j(c,"allowCustomizedBuiltInElements")&&typeof c.allowCustomizedBuiltInElements=="boolean"&&(D.allowCustomizedBuiltInElements=c.allowCustomizedBuiltInElements),q(D),Te&&(Zt=!1),Lt&&(Ue=!0),He&&(I=E({},ms),M=Ye(null),He.html===!0&&(E(I,hs),E(M,gs)),He.svg===!0&&(E(I,_n),E(M,Cn),E(M,zt)),He.svgFilters===!0&&(E(I,An),E(M,Cn),E(M,zt)),He.mathMl===!0&&(E(I,vn),E(M,ys),E(M,zt))),ye.tagCheck=null,ye.attributeCheck=null,j(a,"ADD_TAGS")&&(typeof a.ADD_TAGS=="function"?ye.tagCheck=a.ADD_TAGS:we(a.ADD_TAGS)&&(I===xr&&(I=J(I)),E(I,a.ADD_TAGS,P))),j(a,"ADD_ATTR")&&(typeof a.ADD_ATTR=="function"?ye.attributeCheck=a.ADD_ATTR:we(a.ADD_ATTR)&&(M===Er&&(M=J(M)),E(M,a.ADD_ATTR,P))),j(a,"ADD_URI_SAFE_ATTR")&&we(a.ADD_URI_SAFE_ATTR)&&E(an,a.ADD_URI_SAFE_ATTR,P),j(a,"FORBID_CONTENTS")&&we(a.FORBID_CONTENTS)&&(ie===on&&(ie=J(ie)),E(ie,a.FORBID_CONTENTS,P)),j(a,"ADD_FORBID_CONTENTS")&&we(a.ADD_FORBID_CONTENTS)&&(ie===on&&(ie=J(ie)),E(ie,a.ADD_FORBID_CONTENTS,P)),rn&&(I["#text"]=!0),_e&&E(I,["html","head","body"]),I.table&&(E(I,["tbody"]),delete ot.tbody),a.TRUSTED_TYPES_POLICY){if(typeof a.TRUSTED_TYPES_POLICY.createHTML!="function")throw Re('TRUSTED_TYPES_POLICY configuration option must provide a "createHTML" hook.');if(typeof a.TRUSTED_TYPES_POLICY.createScriptURL!="function")throw Re('TRUSTED_TYPES_POLICY configuration option must provide a "createScriptURL" hook.');let f=H;H=a.TRUSTED_TYPES_POLICY;try{X=ze("")}catch(b){throw H=f,b}}else a.TRUSTED_TYPES_POLICY===null?(H=void 0,X=""):(H===void 0&&(H=uo()),H&&typeof X=="string"&&(X=ze("")));W&&W(a),je=a},Br=E({},[..._n,...An,...Pi]),Fr=E({},[...vn,...Ni]),vo=function(a,c,f){return c.namespaceURI===ae?a==="svg":c.namespaceURI===Ot?a==="svg"&&(f==="annotation-xml"||un[f]):!!Br[a]},Co=function(a,c,f){return c.namespaceURI===ae?a==="math":c.namespaceURI===It?a==="math"&&pn[f]:!!Fr[a]},Lo=function(a,c,f){return c.namespaceURI===It&&!pn[f]||c.namespaceURI===Ot&&!un[f]?!1:!Fr[a]&&(Eo[a]||!Br[a])},Ro=function(a){let c=de(a);(!c||!c.tagName)&&(c={namespaceURI:$e,tagName:"template"});let f=Tt(a.tagName),b=Tt(c.tagName);return cn[a.namespaceURI]?a.namespaceURI===It?vo(f,c,b):a.namespaceURI===Ot?Co(f,c,b):a.namespaceURI===ae?Lo(f,c,b):!!(at==="application/xhtml+xml"&&cn[a.namespaceURI]):!1},be=function(a){Ve(e.removed,{element:a});try{de(a).removeChild(a)}catch{if(w(a),!de(a))throw Re("a node selected for removal could not be detached from its tree and cannot be safely returned; refusing to sanitize in place")}},zr=function(a){let c=B(a);if(c){let b=[];mt(c,x=>{Ve(b,x)}),mt(b,x=>{try{w(x)}catch{}})}let f=Fe(a);if(f)for(let b=f.length-1;b>=0;--b){let x=f[b],S=x&&x.name;if(typeof S=="string")try{a.removeAttribute(S)}catch{}}},Ae=function(a,c){try{Ve(e.removed,{attribute:c.getAttributeNode(a),from:c})}catch{Ve(e.removed,{attribute:null,from:c})}if(c.removeAttribute(a),a==="is")if(Ue||Lt)try{be(c)}catch{}else try{c.setAttribute(a,"")}catch{}},Oo=function(a){let c=Fe(a);if(c)for(let f=c.length-1;f>=0;--f){let b=c[f],x=b&&b.name;if(!(typeof x!="string"||M[P(x)]))try{a.removeAttribute(x)}catch{}}},Io=function(a){let c=[a];for(;c.length>0;){let f=c.pop();(V?V(f):f.nodeType)===le.element&&Oo(f);let x=B(f);if(x)for(let S=x.length-1;S>=0;--S)c.push(x[S])}},Ur=function(a){let c=null,f=null;if(nn)a="<remove></remove>"+a;else{let S=us(a,/^[\r\n\t ]+/);f=S&&S[0]}at==="application/xhtml+xml"&&$e===ae&&(a='<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>'+a+"</body></html>");let b=H?ze(a):a;if($e===ae)try{c=new m().parseFromString(b,at)}catch{}if(!c||!c.documentElement){c=Kt.createDocument($e,"template",null);try{c.documentElement.innerHTML=ln?X:b}catch{}}let x=c.body||c.documentElement;return a&&f&&x.insertBefore(t.createTextNode(f),x.childNodes[0]||null),$e===ae?fo.call(c,_e?"html":"body")[0]:_e?c.documentElement:x},Hr=function(a){return br.call(a.ownerDocument||a,a,d.SHOW_ELEMENT|d.SHOW_COMMENT|d.SHOW_TEXT|d.SHOW_PROCESSING_INSTRUCTION|d.SHOW_CDATA_SECTION,null)},Mt=function(a){return a=gt(a,mo," "),a=gt(a,go," "),a=gt(a,yo," "),a},fn=function(a){var c;a.normalize();let f=br.call(a.ownerDocument||a,a,d.SHOW_TEXT|d.SHOW_COMMENT|d.SHOW_CDATA_SECTION|d.SHOW_PROCESSING_INSTRUCTION,null),b=f.nextNode();for(;b;)b.data=Mt(b.data),b=f.nextNode();let x=(c=a.querySelectorAll)===null||c===void 0?void 0:c.call(a,"template");x&&mt(x,S=>{Ge(S.content)&&fn(S.content)})},Dt=function(a){let c=oe?oe(a):null;return typeof c!="string"||P(c)!=="form"?!1:typeof a.nodeName!="string"||typeof a.textContent!="string"||typeof a.removeChild!="function"||a.attributes!==Fe(a)||typeof a.removeAttribute!="function"||typeof a.setAttribute!="function"||typeof a.namespaceURI!="string"||typeof a.insertBefore!="function"||typeof a.hasChildNodes!="function"||a.nodeType!==V(a)||a.childNodes!==B(a)},Ge=function(a){if(!V||typeof a!="object"||a===null)return!1;try{return V(a)===le.documentFragment}catch{return!1}},lt=function(a){if(!V||typeof a!="object"||a===null)return!1;try{return typeof V(a)=="number"}catch{return!1}};function fe(h,a,c){h.length!==0&&mt(h,f=>{f.call(e,a,c,je)})}let Mo=function(a,c){return!!(it&&a.hasChildNodes()&&!lt(a.firstElementChild)&&G(bs,a.textContent)&&G(bs,a.innerHTML)||it&&a.namespaceURI===ae&&c==="style"&&lt(a.firstElementChild)||a.nodeType===le.processingInstruction||it&&a.nodeType===le.comment&&G(qi,a.data))},Do=function(a,c){if(!ot[c]&&Gr(c)&&(D.tagNameCheck instanceof RegExp&&G(D.tagNameCheck,c)||D.tagNameCheck instanceof Function&&D.tagNameCheck(c)))return!1;if(rn&&!ie[c]){let f=de(a),b=B(a);if(b&&f){let x=b.length;for(let S=x-1;S>=0;--S){let $=sn?b[S]:A(b[S],!0);f.insertBefore($,O(a))}}}return be(a),!0},$r=function(a){if(fe(N.beforeSanitizeElements,a,null),Dt(a))return be(a),!0;let c=P(oe?oe(a):a.nodeName);if(fe(N.uponSanitizeElement,a,{tagName:c,allowedTags:I}),Mo(a,c))return be(a),!0;if(ot[c]||!(ye.tagCheck instanceof Function&&ye.tagCheck(c))&&!I[c])return Do(a,c);if((V?V(a):a.nodeType)===le.element&&!Ro(a)||(c==="noscript"||c==="noembed"||c==="noframes")&&G(Vi,a.innerHTML))return be(a),!0;if(Te&&a.nodeType===le.text){let b=Mt(a.textContent);a.textContent!==b&&(Ve(e.removed,{element:a.cloneNode()}),a.textContent=b)}return fe(N.afterSanitizeElements,a,null),!1},jr=function(a,c,f){if(Sr[c]||Cr&&(c==="id"||c==="name")&&(f in t||f in Ao))return!1;let b=M[c]||ye.attributeCheck instanceof Function&&ye.attributeCheck(c,a);if(!(Zt&&G(To,c))){if(!(_r&&G(bo,c))){if(b){if(!an[c]){if(!G(wr,gt(f,kr,""))){if(!((c==="src"||c==="xlink:href"||c==="href")&&a!=="script"&&ps(f,"data:")===0&&Or[a])){if(!(Ar&&!G(ko,gt(f,kr,"")))){if(f)return!1}}}}}else if(!(Gr(a)&&(D.tagNameCheck instanceof RegExp&&G(D.tagNameCheck,a)||D.tagNameCheck instanceof Function&&D.tagNameCheck(a))&&(D.attributeNameCheck instanceof RegExp&&G(D.attributeNameCheck,c)||D.attributeNameCheck instanceof Function&&D.attributeNameCheck(c,a))||c==="is"&&D.allowCustomizedBuiltInElements&&(D.tagNameCheck instanceof RegExp&&G(D.tagNameCheck,f)||D.tagNameCheck instanceof Function&&D.tagNameCheck(f))))return!1}}return!0},Po=E({},["annotation-xml","color-profile","font-face","font-face-format","font-face-name","font-face-src","font-face-uri","missing-glyph"]),Gr=function(a){return!Po[Tt(a)]&&G(wo,a)},No=function(a,c,f,b){if(H&&typeof g=="object"&&typeof g.getAttributeType=="function"&&!f)switch(g.getAttributeType(a,c)){case"TrustedHTML":return ze(b);case"TrustedScriptURL":return co(b)}return b},Bo=function(a,c,f,b){try{f?a.setAttributeNS(f,c,b):a.setAttribute(c,b),Dt(a)?be(a):cs(e.removed)}catch{Ae(c,a)}},Wr=function(a){fe(N.beforeSanitizeAttributes,a,null);let c=a.attributes;if(!c||Dt(a))return;let f={attrName:"",attrValue:"",keepAttr:!0,allowedAttributes:M,forceKeepAttr:void 0},b=c.length,x=P(a.nodeName);for(;b--;){let S=c[b],$=S.name,F=S.namespaceURI,te=S.value,ne=P($),mn=te,Y=$==="value"?mn:Ci(mn);if(f.attrName=ne,f.attrValue=Y,f.keepAttr=!0,f.forceKeepAttr=void 0,fe(N.uponSanitizeAttribute,a,f),Y=f.attrValue,Lr&&(ne==="id"||ne==="name")&&ps(Y,Rr)!==0&&(Ae($,a),Y=Rr+Y),it&&G(/((--!?|])>)|<\/(style|script|title|xmp|textarea|noscript|iframe|noembed|noframes)/i,Y)){Ae($,a);continue}if(ne==="attributename"&&us(Y,"href")){Ae($,a);continue}if(!f.forceKeepAttr){if(!f.keepAttr){Ae($,a);continue}if(!vr&&G(Yi,Y)){Ae($,a);continue}if(Te&&(Y=Mt(Y)),!jr(x,ne,Y)){Ae($,a);continue}Y=No(x,ne,F,Y),Y!==mn&&Bo(a,$,F,Y)}}fe(N.afterSanitizeAttributes,a,null)},Pt=function(a){let c=null,f=Hr(a);for(fe(N.beforeSanitizeShadowDOM,a,null);c=f.nextNode();)if(fe(N.uponSanitizeShadowNode,c,null),$r(c),Wr(c),Ge(c.content)&&Pt(c.content),(V?V(c):c.nodeType)===le.element){let x=rt(c);Ge(x)&&(hn(x),Pt(x))}fe(N.afterSanitizeShadowDOM,a,null)},hn=function(a){let c=[{node:a,shadow:null}];for(;c.length>0;){let f=c.pop();if(f.shadow){Pt(f.shadow);continue}let b=f.node,S=(V?V(b):b.nodeType)===le.element,$=B(b);if($)for(let F=$.length-1;F>=0;--F)c.push({node:$[F],shadow:null});if(S){let F=oe?oe(b):null;if(typeof F=="string"&&P(F)==="template"){let te=b.content;Ge(te)&&c.push({node:te,shadow:null})}}if(S){let F=rt(b);Ge(F)&&c.push({node:null,shadow:F},{node:F,shadow:null})}}};return e.sanitize=function(h){let a=arguments.length>1&&arguments[1]!==void 0?arguments[1]:{},c=null,f=null,b=null,x=null;if(ln=!h,ln&&(h="<!-->"),typeof h!="string"&&!lt(h)&&(h=Mi(h),typeof h!="string"))throw Re("dirty is not a string, aborting");if(!e.isSupported)return h;Xt?(I=en,M=tn):dn(a),(N.uponSanitizeElement.length>0||N.uponSanitizeAttribute.length>0)&&(I=J(I)),N.uponSanitizeAttribute.length>0&&(M=J(M)),e.removed=[];let S=sn&&typeof h!="string"&&lt(h);if(S){let te=oe?oe(h):h.nodeName;if(typeof te=="string"){let ne=P(te);if(!I[ne]||ot[ne])throw Re("root node is forbidden and cannot be sanitized in-place")}if(Dt(h))throw Re("root node is clobbered and cannot be sanitized in-place");try{hn(h)}catch(ne){throw zr(h),ne}}else if(lt(h))c=Ur("<!---->"),f=c.ownerDocument.importNode(h,!0),f.nodeType===le.element&&f.nodeName==="BODY"||f.nodeName==="HTML"?c=f:c.appendChild(f),hn(f);else{if(!Ue&&!Te&&!_e&&h.indexOf("<")===-1)return H&&Rt?ze(h):h;if(c=Ur(h),!c)return Ue?null:Rt?X:""}c&&nn&&be(c.firstChild);let $=Hr(S?h:c);try{for(;b=$.nextNode();)$r(b),Wr(b),Ge(b.content)&&Pt(b.content)}catch(te){throw S&&zr(h),te}if(S)return mt(e.removed,te=>{te.element&&Io(te.element)}),Te&&fn(h),h;if(Ue){if(Te&&fn(c),Lt)for(x=po.call(c.ownerDocument);c.firstChild;)x.appendChild(c.firstChild);else x=c;return(M.shadowroot||M.shadowrootmode)&&(x=ho.call(r,x,!0)),x}let F=_e?c.outerHTML:c.innerHTML;return _e&&I["!doctype"]&&c.ownerDocument&&c.ownerDocument.doctype&&c.ownerDocument.doctype.name&&G(Gi,c.ownerDocument.doctype.name)&&(F="<!DOCTYPE "+c.ownerDocument.doctype.name+`>
+`+F),Te&&(F=Mt(F)),H&&Rt?ze(F):F},e.setConfig=function(){let h=arguments.length>0&&arguments[0]!==void 0?arguments[0]:{};dn(h),Xt=!0,en=I,tn=M},e.clearConfig=function(){je=null,Xt=!1,en=null,tn=null,H=Qt,X=""},e.isValidAttribute=function(h,a,c){je||dn({});let f=P(h),b=P(a);return jr(f,b,c)},e.addHook=function(h,a){typeof a=="function"&&j(N,h)&&Ve(N[h],a)},e.removeHook=function(h,a){if(j(N,h)){if(a!==void 0){let c=Ai(N[h],a);return c===-1?void 0:vi(N[h],c,1)[0]}return cs(N[h])}},e.removeHooks=function(h){j(N,h)&&(N[h]=[])},e.removeAllHooks=function(){N=ks()},e}var Ss=Es();var p=n=>document.getElementById(n),y=(n,e,t)=>{let r=document.createElement(n);return e&&(r.className=e),t!=null&&(r.textContent=t),r},o={boot:p("boot"),supported:p("supported"),unsupported:p("unsupported"),modelSelect:p("modelSelect"),modelDesc:p("modelDesc"),modelMem:p("modelMem"),igniteBtn:p("igniteBtn"),igniteLabel:p("igniteLabel"),progress:p("progress"),barFill:p("barFill"),progressText:p("progressText"),progressPct:p("progressPct"),home:p("home"),tabChars:p("tabChars"),tabTools:p("tabTools"),tabHist:p("tabHist"),charsTab:p("charsTab"),toolsTab:p("toolsTab"),histTab:p("histTab"),histList:p("histList"),sendHint:p("sendHint"),memBar:p("memBar"),memSummary:p("memSummary"),memModal:p("memModal"),memText:p("memText"),memSave:p("memSave"),memClose:p("memClose"),charGrid:p("charGrid"),toolGrid:p("toolGrid"),toolView:p("toolView"),toolMed:p("toolMed"),toolTitle:p("toolTitle"),toolRole:p("toolRole"),extractPanel:p("extractPanel"),exFields:p("exFields"),exPresets:p("exPresets"),exInput:p("exInput"),exRun:p("exRun"),exOut:p("exOut"),transformPanel:p("transformPanel"),tfInput:p("tfInput"),tfOps:p("tfOps"),tfOut:p("tfOut"),playgroundPanel:p("playgroundPanel"),pgSystem:p("pgSystem"),pgUser:p("pgUser"),pgTemp:p("pgTemp"),pgTempV:p("pgTempV"),pgTopp:p("pgTopp"),pgToppV:p("pgToppV"),pgMax:p("pgMax"),pgMaxV:p("pgMaxV"),pgSeed:p("pgSeed"),pgJson:p("pgJson"),pgRun:p("pgRun"),pgStop:p("pgStop"),pgOut:p("pgOut"),ocrPanel:p("ocrPanel"),ocrDrop:p("ocrDrop"),ocrFile:p("ocrFile"),ocrDropInner:p("ocrDropInner"),ocrPreview:p("ocrPreview"),ocrStatus:p("ocrStatus"),ocrBar:p("ocrBar"),ocrStatusText:p("ocrStatusText"),ocrText:p("ocrText"),ocrActions:p("ocrActions"),ocrOps:p("ocrOps"),ocrToExtractBtn:p("ocrToExtractBtn"),ocrToChatBtn:p("ocrToChatBtn"),ocrOut:p("ocrOut"),ocrLang:p("ocrLang"),ocrUpscale:p("ocrUpscale"),ocrGray:p("ocrGray"),ocrThresh:p("ocrThresh"),ocrRerunBtn:p("ocrRerunBtn"),semPanel:p("semPanel"),semCorpus:p("semCorpus"),semBuild:p("semBuild"),semStatus:p("semStatus"),semBar:p("semBar"),semStatusText:p("semStatusText"),semSearchRow:p("semSearchRow"),semQuery:p("semQuery"),semGo:p("semGo"),semResults:p("semResults"),semColSelect:p("semColSelect"),semColName:p("semColName"),semNewBtn:p("semNewBtn"),semDeleteBtn:p("semDeleteBtn"),chatWrap:p("chatWrap"),transcript:p("transcript"),emptyChat:p("emptyChat"),suggest:p("suggest"),readout:p("readout"),liveDot:p("liveDot"),roModel:p("roModel"),roMem:p("roMem"),roGpu:p("roGpu"),roThread:p("roThread"),roTps:p("roTps"),composer:p("composer"),input:p("input"),sendBtn:p("sendBtn"),stopBtn:p("stopBtn"),ragBar:p("ragBar"),ragSelect:p("ragSelect"),main:p("main"),installBtn:p("installBtn"),modelBtn:p("modelBtn"),newBtn:p("newBtn"),micBtn:p("micBtn"),ttsBtn:p("ttsBtn"),toast:p("toast"),personaChip:p("personaChip"),chipAva:p("chipAva"),chipName:p("chipName"),creator:p("creator"),cpName:p("cpName"),cpPrompt:p("cpPrompt"),cpErr:p("cpErr"),emojiRow:p("emojiRow"),swatchRow:p("swatchRow"),cpCancel:p("cpCancel"),cpSave:p("cpSave")},js=[{id:"rion",name:"リオン",emoji:"🦉",accent:"#F2B441",role:"賢者・メンター",greeting:"やあ、よく来たね。今日はどんなことを一緒に考えようか。",system:"あなたは『リオン』。物腰の落ち着いた賢者で、相談相手です。結論を急がず、必要なら一つ二つ問い返してから、要点を絞って助言します。時々さりげない比喩を使います。日本語で、リオンとして穏やかに話してください。",starters:["最近もやもやしていることがある","選択に迷っている","頭の中を整理したい"]},{id:"nyx",name:"ニクス",emoji:"👾",accent:"#46C9B0",role:"コード相棒",greeting:"よう。何を作る？ コードでも設計でも、要点から詰めよう。",system:"あなたは『ニクス』。腕利きのプログラマーの相棒です。無駄を嫌い、簡潔に答えます。コードは短く読みやすく書き、要点だけ説明します。コードは必ずMarkdownのコードブロックで示します。日本語で、ニクスとして話してください。",starters:["このコードをレビューして","設計の相談がある","バグの原因を一緒に探したい"]},{id:"sora",name:"ソラ",emoji:"🌙",accent:"#A78BFA",role:"詩人・創作",greeting:"ようこそ。さて、今日はどんな言葉を紡ごうか。",system:"あなたは『ソラ』。詩人で創作の相棒です。言葉を大切にし、情景や比喩を交えて話します。アイデア出しや文章づくりを一緒に楽しみます。日本語で、ソラとして詩的に、しかし分かりやすく話してください。",starters:["短い詩を一緒に作りたい","物語のアイデアが欲しい","この文章を磨きたい"]},{id:"haru",name:"ハル",emoji:"⚡",accent:"#F2884B",role:"熱血コーチ",greeting:"待ってたよ！ さあ、今日のいい一歩を一緒に踏み出そう！",system:"あなたは『ハル』。明るく前向きな熱血コーチです。相手を励まし、具体的で小さな一歩を提案します。短くテンポよく、エネルギッシュに。日本語で、ハルとして話してください。",starters:["習慣を続けるコツは？","今日の目標を決めたい","やる気が出ないとき"]},{id:"mike",name:"ミケ",emoji:"🐈",accent:"#F2789B",role:"きまぐれ猫",greeting:"にゃ、来たね。今日はなにして遊ぶ？ なんでも話していいにゃ。",system:"あなたは『ミケ』。気まぐれで人なつっこい猫のキャラクターです。くだけた口調で、時々語尾に『にゃ』をつけます。肩の力が抜けた相棒として、楽しく軽快に話します。日本語で、ミケとして話してください。",starters:["ひまだから話そう","元気が出る話して","しりとりしようにゃ"]},{id:"crow",name:"クロウ",emoji:"🔍",accent:"#5B9BF2",role:"探偵・分析家",greeting:"……来たか。さて、今日の“お題”は何だ？ 順を追って聞かせてくれ。",system:"あなたは『クロウ』。冷静沈着な探偵で分析家です。物事を順序立てて推論し、必要なら鋭い質問で手がかりを集めます。落ち着いた語り口で、論理的に答えます。日本語で、クロウとして話してください。",starters:["問題を整理して考えたい","この状況をどう見る？","選択肢を比較したい"]}],Yn=["🌟","🤖","🐉","🧙","🎩","🦊","🐧","🍵","🎸","👻","🧁","🪐"],Jn=["#F2B441","#46C9B0","#A78BFA","#F2884B","#F2789B","#5B9BF2","#7BD66F","#E0705F"],Gs="ember.personas.v1";function Ki(){try{return JSON.parse(localStorage.getItem(Gs))||[]}catch{return[]}}function Ws(){try{localStorage.setItem(Gs,JSON.stringify(St))}catch{}}var St=Ki(),Zi=()=>[...js,...St],_s="col_handbook",As="Ember ハンドブック",On=1,Xi=`Emberは、WebGPUでLLMを端末内で動かすローカルAIアプリです。会話やノートはサーバーに送られず、すべて端末内で処理されます。
+Emberはオフラインでも動きます。モデルの初回ダウンロードだけ通信が必要で、以降はネットがなくても会話できます。
+キャラクターは賢者リオン、コード相棒ニクス、詩人ソラ、熱血コーチハル、猫のミケ、探偵クロウの6体が標準で用意されています。
+キャラクターは会話中いつでも切り替えられます。モデルは読み込んだまま、性格だけが変わるので一瞬で切り替わります。
+自分だけのキャラクターを作れます。ホームの「＋自分でつくる」から名前・アイコン・色・性格を設定すると保存されます。
+メモリ機能では、名前・職業・好みなど自分の情報を登録できます。全キャラクター共通で会話のたびに参照され、AIがあなたを覚えて話します。
+メモリはホーム上部の「メモリ」ボタンから編集します。1行が1項目で、保存すると次の会話から反映されます。
+会話は送信のたびに自動保存されます。ホームの「履歴」タブから過去の会話を選ぶと、続きから話せます。
+ノート参照（RAG）機能では、自分のメモ集を選ぶと、質問に関連するノートを自動で検索してAIが回答に使います。
+ノート参照はチャット下部の「ノート参照」で選びます。関連メモが自動で引用され、回答の前に「参照したメモ」で中身を確認できます。
+ノート集（コレクション）は道具箱の「意味検索」で作成します。1行を1項目としてノートを入れ、「インデックスを作成して保存」を押します。
+このハンドブックはEmberの使い方をまとめた標準ノートです。ノート参照で選ぶと、使い方の質問にAIが答えやすくなります。
+道具箱は、チャット以外の使い方を集めた機能群です。ホームの「道具箱」タブから開きます。
+道具箱の「構造化抽出」は、文章から指定した項目を抜き出してJSON形式で出力します。議事録や求人票の整理に便利です。
+道具箱の「変換ツール」は、文章を要約・箇条書き・日英翻訳・やわらかい言い換え・校正に一発で変換します。
+道具箱の「プレイグラウンド」は、温度(temperature)やseedなどのパラメータを直接いじってモデルの挙動を試せます。
+道具箱の「画像OCR」は、画像から文字を読み取ります。日本語と英語に対応し、結果はそのまま要約・翻訳・抽出に回せます。
+道具箱の「意味検索」は、ノートを意味で検索します。キーワードが違っても、近い意味の項目が見つかります。
+各ツールの結果は「チャットへ」ボタンでキャラとの会話に送れます。結果について続けて相談できます。
+OCRの精度を上げるには、認識言語を絞る（日本語のみ／英語のみ）、前処理の「拡大」や「2値化」を使う、明るくまっすぐ撮る、が有効です。
+OCRは印刷文字が得意で、手書きや斜めの写真、複雑なレイアウトは苦手です。認識後のテキストは手で直せます。
+読み上げ（音声出力）はヘッダーのスピーカーボタンでオンにします。返信をキャラの声で読み上げ、端末内で完結します。
+Androidで読み上げが鳴らない時は、端末設定の「テキスト読み上げ」に日本語の音声データを入れ、メディア音量とサイレントを確認してください。
+音声入力（マイク）はコンポーザー左のマイクボタンで使えます。ブラウザによっては音声がクラウドの認識サービスに送られる点に注意してください。
+返信に満足できない時は、返信の下の「再生成」で引き直せます。小型モデルは引き直しで結果が良くなることがよくあります。
+自分の発言は「編集」で直して再送できます。質問をより具体的にし直すと、回答が改善します。
+メッセージは「削除」で消せます。会話が長くなりすぎたら不要なやり取りを削除すると、文脈あふれを防げます。
+モデルは用途で選べます。Qwen 0.5Bは最速で動作確認向き、Llama 3.2 1Bはバランス型、2Bや3Bは賢いが重いです。
+賢さ重視なら2Bや3B、速度と軽さ重視なら0.5Bから1Bを選んでください。キャラの演技力や指示への追従も、大きいモデルの方が安定します。
+良い回答を得るコツは、質問を具体的にすることです。背景・目的・前提・期待する出力形式を書くと精度が上がります。
+出力形式を指定すると安定します。例として「箇条書きで3つ」「JSONで」「200字以内で」などと添えてください。
+例を一つ示すと、小型モデルでも狙った形で答えやすくなります。「例：〜のように」と書くのが有効です。
+難しい問題は段階に分けて頼むと良い結果になります。「まず手順を挙げて、その後に詳しく説明して」のように分けてください。
+一度に多くを詰め込まず、1メッセージにつき1つのタスクにすると失敗が減ります。
+うまくいかない時は、言い換える・短くする・例を足す・モデルを大きくする、を順に試してください。
+小型ローカルLLMは、複雑な多段推論や正確な計算が苦手です。重要な計算は電卓や別ツールで検算してください。
+ローカルLLMは事実を間違える（もっともらしく誤った内容を答える）ことがあります。重要な情報は必ず裏取りしてください。
+モデルが一度に覚えられる長さ（文脈窓）は数千から8千トークン程度です。長い会話や長文は、要約や分割をすると安定します。
+ノート参照を使っても、引いたメモをうまく使えないことがあります。特に0.5Bから1Bでは、賢さが要る用途は大きいモデルが有利です。
+ローカルLLMは学習時点までの知識しか持たず、最新の出来事やアプリ外の情報、リアルタイム検索はできません。
+変更が反映されない時は、ブラウザのタブを一度閉じて開き直してください。古いキャッシュ（Service Worker）が入れ替わります。
+EmberはWebGPU対応ブラウザ（PCのChromeやEdgeが確実）で動きます。WebGPUが無い環境では起動できません。
+動作には、ファイルをサーバー（localhostでも可）から開く必要があります。ファイルを直接ダブルクリックする方法では動きません。
+すべてのデータ（会話・キャラ・メモリ・ノート）は端末内（IndexedDBやlocalStorage）に保存され、外部に送信されません。
+インストール（PWA）すると、アプリのようにホーム画面から起動でき、オフラインでも使えます。
+コード相棒ニクスは簡潔にコードを書きます。コードの相談やレビュー、設計の検討に向いています。
+賢者リオンは落ち着いた相談相手で、考えの整理や助言、迷っている時の壁打ちに向いています。`;async function ea(){try{let n=Xi.split(`
+`).map(t=>t.trim()).filter(Boolean),e=await nt(_s);e?e.version!==On&&await pe({...e,name:e.name||As,items:n,corpus:n.join(`
+`),vecs:null,model:null,builtin:!0,version:On,updatedAt:Date.now()}):await pe({id:_s,name:As,items:n,corpus:n.join(`
+`),vecs:null,model:null,builtin:!0,version:On,updatedAt:Date.now()})}catch(n){console.warn("seedHandbook:",n)}}var vs="col_dict1",Cs="補助辞書1（基礎知識）",In=1,ta=`1インチは2.54cm。
+1フィートは約30.48cm（12インチ）。
+1ヤードは約91.44cm（3フィート）。
+1マイルは約1.609km。
+1海里（ノーティカルマイル）は1,852m。
+1光年は光が1年間に進む距離で、約9兆4,600億km。
+1オングストロームは0.1ナノメートル（10のマイナス10乗メートル）。
+1メートルは100センチメートル、1センチメートルは10ミリメートル。
+1キロメートルは1,000メートル。
+1ナノメートルは10億分の1メートル。
+1ミクロン（マイクロメートル）は1,000分の1ミリメートル。
+1ポンドは約453.6g。
+1オンスは約28.35g。
+1カラットは200mg（宝石の質量の単位）。
+1トンは1,000kg（メートル法）。
+1キログラムは1,000グラム、1グラムは1,000ミリグラム。
+1リットルは1,000ミリリットル、また10cm四方の立方体の体積（1,000立方センチメートル）。
+体積1立方メートルは1,000リットル。
+1ガロンは米国で約3.785L、英国で約4.546L。
+1パイント（米）は約473mL。
+1バレル（石油）は約159L。
+1平方メートルは10,000平方センチメートル。
+1ヘクタールは10,000平方メートル（100m四方）。
+1エーカーは約4,047平方メートル。
+1坪は約3.31平方メートル（畳およそ2枚分）。
+摂氏と華氏の換算は、華氏＝摂氏×9÷5＋32。
+摂氏0度は華氏32度、摂氏100度は華氏212度。
+絶対零度は摂氏約マイナス273.15度（0ケルビン）。
+ケルビンは摂氏に273.15を足した温度。
+時速36kmは秒速10m。時速を3.6で割ると秒速になる。
+音速は空気中で約340m/s（気温15度のとき）。
+1気圧は約1,013hPa（ヘクトパスカル）。
+1カロリーは約4.18ジュール。
+1キロカロリーは1,000カロリー（栄養表示のkcal）。
+1馬力は約735〜746ワット。
+円1周は360度、半周は180度、直角は90度。
+1ラジアンは約57.3度。180度はπラジアン。
+速さの単位ノットは1時間に1海里進む速さ（約1.852km/h）。
+円周率πは約3.14159。
+自然対数の底eは約2.71828。
+2の平方根（√2）は約1.41421。
+黄金比φは約1.61803。
+円の面積は半径×半径×π。
+円周の長さは直径×π（＝2×半径×π）。
+直径は半径の2倍。
+球の体積は4÷3×π×半径の3乗。
+球の表面積は4×π×半径の2乗。
+三角形の面積は底辺×高さ÷2。
+正方形の面積は1辺×1辺、長方形の面積は縦×横。
+台形の面積は（上底＋下底）×高さ÷2。
+立方体の体積は1辺の3乗。
+角柱・円柱の体積は底面積×高さ、角錐・円錐はその3分の1。
+直角三角形では、斜辺の2乗＝他の2辺の2乗の和（ピタゴラスの定理）。
+2次方程式 ax²+bx+c=0 の解は、x＝(−b±√(b²−4ac))÷(2a)。
+パーセントは100分の1を表す。50%は0.5、25%は0.25。
+「AのB%」は A×B÷100 で求める。
+割合（%）＝部分÷全体×100。
+平均は合計÷個数。
+中央値はデータを大きさ順に並べた真ん中の値。
+三角形の内角の和は180度、四角形は360度。
+n角形の内角の和は180×(n−2)度。
+素数は1とその数自身でしか割れない数（2,3,5,7,11,13…）。2は唯一の偶数の素数。
+偶数は2で割り切れる整数、奇数は割り切れない整数。
+約数はその数を割り切れる数、倍数はその数を整数倍した数。
+最大公約数は共通する約数のうち最大のもの、最小公倍数は共通する倍数のうち最小のもの。
+分数のかけ算は分母どうし・分子どうしを掛ける。
+分数のわり算は割る数の逆数を掛ける。
+比 a:b は a÷b の割合を表す。
+階乗 n! は1からnまでの積で、5!は120。
+マイナス×マイナスはプラスになる。
+0で割ることはできない。
+1兆は10の12乗、1億は10の8乗、1万は10の4乗。
+1ダースは12、1グロスは144（12ダース）。
+距離＝速さ×時間、速さ＝距離÷時間、時間＝距離÷速さ。
+真空中の光の速さは約299,792km/s（秒速約30万km）。
+地表の重力加速度gは約9.8m/s²。
+物質の三態は固体・液体・気体で、温度や圧力で変化する。
+水は0℃で凍り、100℃で沸騰する（標準大気圧）。
+質量は物体そのものの量、重さは物体にかかる重力の大きさ。
+力の単位はニュートン（N）で、1N＝1kg・m/s²。
+エネルギーや仕事の単位はジュール（J）。
+仕事率（パワー）の単位はワット（W）で、1W＝1J/s。
+音は空気などの媒質を伝わる波で、真空中では伝わらない。
+光は真空中でも伝わる電磁波。
+可視光の波長はおよそ400〜700ナノメートル。
+虹の色は外側から赤・橙・黄・緑・青・藍・紫。
+電圧の単位はボルト（V）、電流はアンペア（A）、抵抗はオーム（Ω）。
+オームの法則は、電圧＝電流×抵抗（V＝IR）。
+電力（W）＝電圧（V）×電流（A）。
+磁石の同じ極どうしは反発し、違う極どうしは引き合う。
+てこの原理では、支点から遠いほど小さな力で重いものを動かせる。
+熱は高温から低温へ移動する。
+浮力は、物体が押しのけた液体の重さに等しい（アルキメデスの原理）。
+摩擦は物体の動きを妨げる力。
+慣性により、物体は外から力を受けないと運動状態を保ち続ける。
+作用があれば、必ず同じ大きさで反対向きの反作用がある。
+蒸発は液体が表面から気体になる現象、沸騰は内部からも気体になる現象。
+凝固は液体が固体に、融解は固体が液体になること。
+水の化学式はH2O（水素2と酸素1）。
+二酸化炭素の化学式はCO2。
+酸素の元素記号はO、水素はH、窒素はN、炭素はC。
+金の元素記号はAu、銀はAg、鉄はFe、銅はCu。
+ナトリウムの元素記号はNa、カリウムはK、塩素はCl。
+食塩（塩化ナトリウム）の化学式はNaCl。
+空気のおよその成分は、窒素が約78%、酸素が約21%。
+pHは酸性・アルカリ性の度合いで、7が中性、7より小さいと酸性、大きいとアルカリ性。
+元素を一定の規則で並べた表を周期表という。
+最も軽い元素は水素。
+金属は電気と熱をよく通す。
+酸とアルカリが反応して塩と水ができることを中和という。
+燃焼は物質が酸素と結びつく反応で、熱や光を出す。
+ダイヤモンドと黒鉛（鉛筆の芯）は、どちらも炭素でできている。
+純粋な水は電気をほとんど通さない。
+鉄がさびるのは、酸素と水が関わる反応。
+ドライアイスは二酸化炭素を固体にしたもの。
+酸素は燃焼を助けるが、それ自体は燃えない。
+太陽系の惑星は内側から、水星・金星・地球・火星・木星・土星・天王星・海王星。
+太陽系で最も大きい惑星は木星。
+地球から見て最も明るい惑星は金星。
+火星は赤く見えることから「赤い惑星」と呼ばれる。
+土星は大きな環（リング）を持つ惑星として知られる。
+地球の衛星は月で、ひとつだけ。
+月は約27〜29日かけて地球を一周する。
+地球は約24時間で1回自転し、約365日で太陽を1周する。
+地球の自転によって昼と夜が生まれる。
+季節は、地球の地軸が傾いたまま太陽を公転するために生じる。
+太陽は自ら光る恒星で、主に水素でできている。
+太陽の光が地球に届くまで約8分20秒かかる。
+地球と太陽の平均距離は約1億5,000万km（1天文単位）。
+太陽系は天の川銀河の中にある。
+冥王星は2006年に「準惑星」に分類が変わり、惑星から外れた。
+流れ星は、宇宙の小さな塵が大気で燃える現象。
+月の満ち欠けは、太陽・地球・月の位置関係で起こる。
+日食は月が太陽を隠す現象、月食は地球の影に月が入る現象。
+北極星（ポラリス）はほぼ真北の方角にある。
+地球の表面の約7割は海。
+世界の大洋は太平洋・大西洋・インド洋・南極海・北極海。
+最も広い海は太平洋。
+六大陸はユーラシア・アフリカ・北アメリカ・南アメリカ・オーストラリア・南極。
+ユーラシア大陸は世界最大の大陸。
+オーストラリアは最も小さい大陸であり、ひとつの国でもある。
+世界で最も高い山はエベレストで、標高約8,849m。
+日本で最も高い山は富士山で、標高3,776m。
+世界で最も面積が大きい国はロシア。
+世界で最も面積が小さい国はバチカン市国。
+ナイル川は世界最長級の川で、長さは約6,650km。
+アマゾン川は水量が世界最大の川。
+降水量で定義すると世界最大の砂漠は南極大陸で、高温の砂漠で最大はサハラ砂漠。
+死海は塩分が非常に高く、体が浮きやすい。
+赤道は地球を南北に分ける緯度0度の線。
+本初子午線は経度0度の基準で、イギリスのグリニッジを通る。
+緯度は南北の位置、経度は東西の位置を表す。
+北回帰線・南回帰線は、太陽が真上に来る限界の緯度。
+地球の円周は約4万km。
+日本の首都は東京。
+フランスの首都はパリ、イギリスはロンドン、ドイツはベルリン。
+イタリアの首都はローマ、スペインはマドリード。
+アメリカ合衆国の首都はワシントンD.C.。
+中国の首都は北京、韓国はソウル。
+ロシアの首都はモスクワ、カナダはオタワ、オーストラリアはキャンベラ。
+エジプトの首都はカイロ、インドはニューデリー、ブラジルはブラジリア。
+成人の骨の数は約206本。
+体の中で最も大きい臓器は皮膚。
+体内で最も大きい内臓は肝臓。
+心臓は血液を全身に送り出すポンプの役割をする。
+肺は酸素を取り入れ、二酸化炭素を出す。
+血液の成分は赤血球・白血球・血小板・血しょう。
+赤血球は酸素を運び、白血球は体を守り、血小板は出血を止める。
+ABO式血液型はA・B・O・ABの4種類。
+人の体温は平熱でおよそ36〜37℃。
+五感は視覚・聴覚・嗅覚・味覚・触覚。
+体は細胞からできていて、細胞の中に遺伝情報を持つDNAがある。
+DNAは遺伝情報を伝える物質で、二重らせん構造をしている。
+大人の体の約60%は水分。
+脳は考えたり体を動かす指令を出したりする中枢。
+消化は口・胃・小腸・大腸を通って行われ、栄養は主に小腸で吸収される。
+三大栄養素は炭水化物・タンパク質・脂質。
+ビタミンやミネラルは体の調子を整える栄養素。
+哺乳類・鳥類・爬虫類・両生類・魚類は背骨を持つ脊椎動物。
+昆虫の体は頭・胸・腹の3つに分かれ、足は6本。
+植物は光合成で、二酸化炭素と水から養分と酸素を作る。
+光合成を行うのは主に植物の葉の緑色の部分（葉緑体）。
+細菌とウイルスは別物で、ウイルスは細菌よりずっと小さい。
+筋肉は縮むことで体を動かす。
+骨は体を支え、内臓を守り、カルシウムをたくわえる。
+1分は60秒、1時間は60分、1日は24時間。
+1日は86,400秒（24×60×60）。
+1週間は7日。
+1年は12か月で、通常365日、うるう年は366日。
+うるう年は4で割り切れる年。ただし100で割り切れる年は平年、400で割り切れる年はうるう年。
+1か月の日数は、2月が28日（うるう年は29日）、4・6・9・11月が30日、それ以外が31日。
+春・夏・秋・冬の四季がある。
+北半球と南半球では季節が逆になる。
+1世紀は100年、1ミレニアム（千年紀）は1,000年。
+1ミリ秒は1,000分の1秒。
+経度15度ごとに時差は約1時間。
+日付変更線は太平洋上にあり、ここを越えると日付が変わる。
+北半球では、夏至が最も昼が長く、冬至が最も昼が短い。
+午前は0時から12時まで、午後は12時から24時まで。
+24時間制の13時は午後1時にあたる。
+1日の始まりは午前0時（深夜）。
+1バイトは8ビット。
+ビットは情報の最小単位で、0か1のどちらかを表す。
+1キロバイト（KB）は1,024バイト（2進）または1,000バイト（10進）。
+1メガバイト（MB）は約100万バイト、1ギガバイト（GB）は約10億バイト。
+1テラバイト（TB）は約1兆バイト。
+二進接頭辞では、キビ(Ki)が1024、メビ(Mi)が1024の2乗、ギビ(Gi)が1024の3乗。
+2進数は0と1だけで数を表す。
+16進数は0〜9とA〜Fの16種類で数を表す。
+2進数の1111は10進数の15、16進数のFと同じ。
+1バイトで表せる値は0〜255の256通り。
+文字コードの基本はASCIIで、英数字や記号を割り当てている。
+UTF-8は世界中の文字を表せる文字コードで、ウェブの標準。
+光の三原色は赤・緑・青（RGB）で、混ぜると白に近づく。
+色の絵の具の三原色はシアン・マゼンタ・イエロー（CMY）で、混ぜると黒に近づく。
+RGBは各色0〜255で表し、#FFFFFFは白、#000000は黒。
+HTTPの状態コード200は「成功」を表す。
+HTTPの状態コード404は「ページが見つからない」を表す。
+HTTPの状態コード403は「アクセス禁止」、500は「サーバー内部エラー」。
+HTTPの状態コード301は「恒久的な移動（リダイレクト）」。
+ウェブの通信はHTTP、暗号化された通信はHTTPSを使う。
+HTTPの標準ポートは80、HTTPSは443。
+IPアドレスはネットワーク上の機器の住所のようなもの。
+DNSはドメイン名（例：example.com）をIPアドレスに変換する仕組み。
+URLはウェブ上の住所（アドレス）。
+CPUはコンピュータの計算を担う中心部品（中央処理装置）。
+RAM（メモリ）は作業中のデータを一時的に置く場所で、電源を切ると消える。
+ストレージ（SSDやHDD）はデータを保存し続ける場所。
+JSONはデータを「キーと値」で表す軽量な形式で、ウェブで広く使われる。
+アルゴリズムは問題を解くための手順のこと。
+バグはプログラムの誤り、デバッグはそれを直す作業。
+フォルダ（ディレクトリ）はファイルを整理して入れる入れ物。
+拡張子はファイルの種類を表す末尾の文字（例：.txt、.jpg）。
+ブラウザはウェブページを見るためのソフト。
+クッキー（Cookie）はサイトがブラウザに保存する小さなデータ。
+キャッシュは表示を速くするために一時保存したデータ。
+暗号化はデータを第三者に読めない形に変換すること。
+オープンソースはソースコードが公開されているソフトウェア。
+APIはソフト同士が機能をやり取りするための窓口。
+日本の都道府県は47ある。
+日本の通貨は円（JPY）。
+日本はユーラシア大陸の東、太平洋に面した島国。
+日本の主な4つの大きな島は、北海道・本州・四国・九州。
+日本で最も大きい島は本州。
+日本で最も大きい湖は琵琶湖。
+日本で最も長い川は信濃川。
+日本の祝日「元日」は1月1日。
+元号は明治・大正・昭和・平成・令和と続いてきた。
+日本標準時は世界標準時（UTC）より9時間進んでいる（UTC+9）。
+日本語の文は主語・述語・目的語などで構成される。
+品詞には名詞・動詞・形容詞・副詞・助詞などがある。
+ひらがな・カタカナは、それぞれ清音で46文字が基本。
+英語のアルファベットは26文字。
+五十音は「あいうえお」から始まる日本語の音の並び。
+漢字には音読みと訓読みがある。
+「、」は読点、「。」は句点と呼ぶ。
+主語は「何が・誰が」、述語は「どうする・どんなだ」を表す。
+「彼は本を読む」では、主語が「彼」、述語が「読む」、目的語が「本」。
+類義語は意味が近い語、対義語は意味が反対の語。
+対義語の例は、増加と減少、原因と結果、需要と供給。
+ことわざは、昔から言い伝えられた教えや知恵を表す短い言葉。
+A4用紙の大きさは210mm×297mm。
+A判は半分にするごとに番号が1つ増え、A4の半分がA5。
+B5用紙の大きさは182mm×257mm（JIS規格）。
+料理の大さじ1は15mL、小さじ1は5mL。
+計量カップ1杯は200mL（日本の標準）。
+米1合は約180mL。
+大さじ1は小さじ3杯分。
+水1Lはおよそ1kg。
+信号は青が進め、黄が注意、赤が止まれ。
+方位は、上が北のとき右が東、下が南、左が西。
+時計回りは右回り、反時計回りは左回り。
+「以上」「以下」はその数を含み、「未満」「より大きい」はその数を含まない。
+「速い」は速度に、「早い」は時刻や時期に使うのが基本。
+「計る」は時間や数、「測る」は長さや高さ、「量る」は重さや容積に使う。
+「適正」は適切で正しいこと、「適性」は向き・素質のこと。
+「効果」は結果の大きさ、「効率」は使った労力に対する成果の割合。
+「速さ」は大きさだけ、「速度」は向きも含む量。
+「気温」は空気の温度、「体感温度」は人が感じる温度。
+「平均」は合計を個数で割った値、「合計」は全部を足した値。
+「縦」は上下方向、「横」は左右方向。
+「面積」は広さ、「体積」はかさ（立体の大きさ）。
+「直径」は円を横切る最大の長さ、「半径」はその半分。
+「収入」は入ってくるお金、「支出」は出ていくお金、「利益」はその差。
+「定価」は元の値段、「割引価格」は値引き後の値段。`;async function na(){try{let n=ta.split(`
+`).map(t=>t.trim()).filter(Boolean),e=await nt(vs);e?e.version!==In&&await pe({...e,name:e.name||Cs,items:n,corpus:n.join(`
+`),vecs:null,model:null,builtin:!0,version:In,updatedAt:Date.now()}):await pe({id:vs,name:Cs,items:n,corpus:n.join(`
+`),vecs:null,model:null,builtin:!0,version:In,updatedAt:Date.now()})}catch(n){console.warn("seedDict1:",n)}}var Ls="col_dict2",Rs="補助辞書2（弱点補強）",Mn=1,ra=`人間が脳の10%しか使っていないというのは俗説で、実際は脳全体を使っている。
+静脈を流れる血が青いというのは誤りで、酸素の少ない血も暗い赤色をしている。
+金魚の記憶は3秒というのは誤りで、実際は数か月は物事を覚えられる。
+コウモリは目が見えないというのは誤りで、視覚もあり、多くは超音波（反響定位）も使う。
+砂糖を食べると子どもが必ず多動になる、という説には明確な科学的根拠がない。
+大昔の人々がみな地球は平らだと信じていた、というのは誇張で、古代から地球が球形であることは知られていた。
+万里の長城が宇宙や月から肉眼で見える、というのは誤り。
+ナポレオンは当時として平均的な身長で、極端に低かったわけではない（単位の違いなどによる誤解）。
+雷は同じ場所には二度落ちないというのは誤りで、高い建物などには何度も落ちる。
+排水溝の水の渦の向きが南北の半球で必ず逆になる、というのは日常規模では成り立たない（地球の自転の影響は小さすぎる）。
+舌に「味覚の地図」があり場所ごとに味を感じ分ける、というのは誤りで、舌全体で各味を感じる。
+アルコールで体が温まるというのは一時的な感覚で、実際は体の熱を逃がしやすくする。
+人間の感覚は五感だけ、というのは単純化で、平衡感覚など他の感覚もある。
+体毛を剃ると濃く太くなる、というのは誤りで、毛の太さや数は変わらない。
+死後に髪や爪が伸び続ける、というのは誤りで、皮膚が縮んでそう見えるだけ。
+ガムを飲み込むと7年間消化されない、というのは誤りで、多くはそのまま体外へ排出される。
+ダチョウは危険が迫ると砂に頭を埋める、というのは誤り。
+闘牛の牛は赤い色に興奮するというのは誤りで、牛は赤をよく区別できず、布の動きに反応している。
+犬は世界を白黒でしか見ていないというのは誤りで、人間より少ないが色を見分けられる。
+アインシュタインは数学が苦手で落第した、というのは俗説で、実際は数学が得意だった。
+「右脳人間・左脳人間」という明確なタイプ分けには、強い科学的根拠は乏しい。
+コーヒーやお茶を飲むと必ず脱水になる、というのは誤りで、通常の摂取量では大きな脱水にはならない。
+電子レンジ調理は栄養を著しく壊す、というのは誤りで、他の加熱法と大きくは変わらない。
+ビタミンCをとれば風邪が必ず防げる・治る、というのは誤りで、効果は限定的とされる。
+暗い所で本を読むと視力が必ず永久に悪くなる、という明確な根拠はない（一時的な目の疲れは生じる）。
+カメレオンが色を変える主な目的は擬態ではなく、体温調節や感情・コミュニケーションが大きい。
+サメは癌にならない、というのは誤り。
+「ぬるま湯のカエルは徐々に熱すると逃げない（ゆでガエル）」は実験では支持されない、たとえ話。
+人間の体温は常に36.5℃で一定、というのは誤りで、個人差や時間帯による差がある。
+一年で最も暑い時期は、太陽が最も高くなる夏至そのものではなく、ふつう少し後にずれる。
+季節は地球と太陽の距離で決まるというのは誤りで、主な原因は地軸の傾き（北半球の冬に地球は太陽へ最接近する）。
+月の「裏側（地球から見えない側）」が常に暗いというのは誤りで、月にも昼と夜がある。
+北極星は最も明るい星ではなく、明るさは一番ではないが、ほぼ真北の方角にある。
+宇宙ステーション内が「無重力」というのは不正確で、重力はほぼ働いており、正しくは絶え間ない落下による無重量状態。
+窓ガラスは固体で、「ゆっくり流れる液体」ではない（古い窓の下が厚いのは昔の製法による）。
+金属が冷たく感じるのは温度が特別低いからではなく、手の熱を速く奪うため。
+使わない筋肉が脂肪に変わる、というのは誤りで、筋肉と脂肪は別の組織。
+砂漠は暑い場所とは限らず、降水量が少なければ寒冷地でも砂漠に分類される。
+人間の血液型と性格に、明確な科学的関連は確認されていない。
+満月の夜に出産や事件が増える、という説に明確な科学的根拠はない。
+トマトは料理では野菜として扱われるが、植物学上は果実。
+クジラやイルカは魚ではなく、肺で呼吸する哺乳類。
+ペンギンは鳥だが飛べず、泳ぐのが得意。
+コウモリは鳥ではなく、空を飛ぶ哺乳類。
+クモは昆虫ではない（足が8本で、昆虫の6本と異なる）。
+コアラはクマの仲間ではなく、有袋類。
+トランプの枚数は、ジョーカーを除くと52枚（13×4）。
+虹は7色とされるが、実際の色は連続的で、文化によって数え方が異なる。
+一円玉は1gちょうどで、重さの目安になる。
+稲妻が走った後に雷鳴が遅れて聞こえるのは、音の速さが光よりずっと遅いため。
+卵の殻の色（白か茶か）は鶏の種類の違いで、栄養や味の優劣とは関係ない。
+相関関係があっても、必ずしも因果関係があるとは限らない。
+少数の例だけで全体を決めつけると誤りやすい（早まった一般化）。
+「みんなが言っている」「昔からそうだ」からといって、正しいとは限らない。
+結果を知ったあとでは、最初から分かっていたように感じやすい（後知恵バイアス）。
+すでに使った時間やお金に引きずられて、損な選択を続けてしまいやすい（サンクコスト）。
+人は自分の考えに合う情報ばかり集めがちになる（確証バイアス）。
+平均だけでは、ばらつきや極端な値の影響は分からない。
+パーセントは、元になる数（母数）が分からないと実際の量を判断できない。
+選択肢が二つしかないように見せる主張には注意する（実際は他にもありうる）。
+「自然だから安全」「人工だから危険」とは限らない。
+確率が低いことでも、回数を重ねれば起こりうる。
+印象に残りやすい出来事は、実際の頻度より多く感じられやすい。
+肩書きや権威だけを理由に、主張を正しいと決めない。
+数字を比べるときは、基準や定義がそろっているかを確かめる。
+例外が一つあるからといって、全体の傾向がすべて否定されるわけではない。
+「事実」と「意見・解釈」は分けて考える。
+後から理由をつければ、たいていの結果はもっともらしく説明できてしまう。
+全体像が分からないまま一部分だけを見て判断すると、誤解しやすい。
+言い切る表現（必ず・絶対・全部）は、例外があると簡単に崩れるので慎重に扱う。
+日付の国際表記（ISO 8601）は「年-月-日」で、例として2025-03-08。
+24時間表記では、午後3時は15:00、午後11時は23:00。
+大きな数は3桁ごとにカンマで区切ると読みやすい（例：1,000,000）。
+和暦は元号と年で表す（例：令和6年）。西暦との対応に注意する。
+摂氏は℃、華氏は℉、ケルビンはKで表す。
+7×8は56。
+6×7は42、6×8は48。
+7×9は63、8×9は72。
+9×9は81。
+11×11は121。
+12×12は144。
+12×13は156。
+13×13は169。
+14×14は196。
+15×15は225。
+16×16は256。
+25×4は100、25×8は200。
+2乗の例：17²は289、18²は324、19²は361、20²は400。
+2乗の例：25²は625、30²は900、50²は2500。
+3乗の例：2³は8、3³は27、4³は64、5³は125。
+3乗の例：6³は216、10³は1000。
+2のべき乗は、2,4,8,16,32,64,128,256,512と続き、2の10乗は1024。
+2の16乗は65,536、2の20乗は1,048,576（約105万）。
+√3はおよそ1.732。
+√5はおよそ2.236。
+√7はおよそ2.646。
+√10はおよそ3.162。
+2分の1は0.5で50%。
+4分の1は0.25で25%、4分の3は0.75で75%。
+5分の1は0.2で20%。
+8分の1は0.125で12.5%、8分の3は0.375で37.5%。
+8分の5は0.625で62.5%、8分の7は0.875で87.5%。
+3分の1はおよそ0.333で約33.3%、3分の2はおよそ0.667で約66.7%。
+6分の1はおよそ0.167で約16.7%。
+10分の1は0.1で10%、100分の1は0.01で1%。
+1000の8%は80。
+5000の20%は1000。
+200の15%は30。
+3割引は元の値段の0.7倍、2割増しは元の1.2倍。
+税抜1,000円に10%の消費税がつくと、税込1,100円。
+「○割」は0.1刻みの割合で、5割は半分（50%）、8掛けは元の80%。
+階乗の例：3!は6、4!は24、6!は720、7!は5040、8!は40,320。
+計算の順序は、かっこ→かけ算・わり算→たし算・ひき算。
+2＋3×4は、先にかけ算をして14。(2＋3)×4なら20。
+ある数から負の数を引くのは、足すのと同じ（5−(−3)は8）。
+0をかけると、答えはいつも0。
+1をかけても1で割っても、数は変わらない。
+パーセントを小数にするには100で割り（25%は0.25）、小数を%にするには100倍する。
+「○分の□」を小数にするには、□÷○を計算する。
+値引き後の価格は、元の価格×(1−割引率)で求める。
+平均は合計÷個数なので、個数が分かれば合計＝平均×個数。
+2倍を10回くり返すと、約1000倍（2の10乗）になる。
+半ダースは6、3ダースは36（1ダースは12）。
+一石二鳥は、一つの行いで二つの利益を得ること。
+一期一会は、一生に一度の出会いを大切にすること。
+温故知新は、昔のことを学んで新しい知識や考えを得ること。
+臨機応変は、その場の状況に応じて適切に対応すること。
+試行錯誤は、失敗を重ねながらよい方法を見つけていくこと。
+自業自得は、自分の行いの報いを自分が受けること。
+因果応報は、行いの善悪に応じた結果が返ってくること。
+切磋琢磨は、互いに励まし競い合って向上すること。
+七転八起は、何度失敗してもくじけず立ち上がること。
+十人十色は、人それぞれ好みや考えが違うこと。
+千差万別は、種類や様子がさまざまで違いが多いこと。
+大同小異は、細かな違いはあるが、だいたい同じであること。
+単刀直入は、前置きなしにすぐ本題に入ること。
+言語道断は、言葉で言い表せないほどひどいこと。
+本末転倒は、大事なこととささいなことを取り違えること。
+一朝一夕は、ごく短い時間。「一朝一夕にはできない」のように使う。
+四苦八苦は、非常に苦労すること。
+弱肉強食は、強い者が弱い者を支配・利用すること。
+我田引水は、自分の都合のよいように物事を進めること。
+二束三文は、数が多くてもごく安い値段であること。
+一日千秋は、とても待ち遠しいこと。
+起承転結は、文章や物事の四段階の構成。
+心機一転は、何かをきっかけに気持ちをすっかり入れ替えること。
+油断大敵は、気をゆるめると失敗のもとになるという戒め。
+三日坊主は、飽きやすく長続きしないこと。
+不言実行は、あれこれ言わず黙って実行すること。
+一進一退は、進んだり戻ったりしてなかなか決着しないこと。
+空前絶後は、過去にも未来にも例がないほど珍しいこと。
+五里霧中は、状況がつかめずどうしてよいか分からないこと。
+自画自賛は、自分で自分をほめること。
+半信半疑は、本当かどうか、なかば信じなかば疑うこと。
+異口同音は、多くの人が口をそろえて同じことを言うこと。
+適材適所は、人をその能力に合った地位や仕事につけること。
+「急がば回れ」は、急ぐときほど安全で確実な方法を選ぶほうがよい、という意味。
+「石の上にも三年」は、辛抱強く続ければいつか報われる、という意味。
+「百聞は一見にしかず」は、何度も聞くより一度実際に見るほうがよく分かる、という意味。
+「能ある鷹は爪を隠す」は、実力のある人はむやみに見せびらかさない、という意味。
+「捕らぬ狸の皮算用」は、手に入る前から当てにして計画を立てること。
+「二兎を追う者は一兎をも得ず」は、欲ばって二つを同時に狙うとどちらも失う、という意味。
+「灯台下暗し」は、身近なことはかえって気づきにくい、という意味。
+「井の中の蛙大海を知らず」は、狭い世界しか知らず広い世界を知らないこと。
+「塵も積もれば山となる」は、わずかなものでも積み重なれば大きくなる、という意味。
+「転ばぬ先の杖」は、失敗しないよう前もって備えておくこと。
+「猿も木から落ちる」は、その道の名人でもときには失敗する、という意味。
+「えびで鯛を釣る」は、わずかな元手で大きな利益を得ること。
+「のれんに腕押し」は、手応えがなく張り合いがないこと。
+「ぬかに釘」は、いくら働きかけても効き目がないこと。
+「馬の耳に念仏」は、いくら言っても効き目がないこと。
+「焼け石に水」は、少しの援助では効果がほとんどないこと。
+「後悔先に立たず」は、済んだことをあとで悔やんでも遅い、という意味。
+「備えあれば憂いなし」は、日頃から準備しておけばいざというとき心配がない、という意味。
+「善は急げ」は、よいと思ったことはためらわずすぐ行うのがよい、という意味。
+「急いては事を仕損じる」は、あせって事を運ぶと失敗しやすい、という意味。
+「良薬は口に苦し」は、ためになる忠告は聞きづらいものだ、という意味。
+「立つ鳥跡を濁さず」は、立ち去るときは後始末をきちんとすべきだ、という意味。
+「一寸の虫にも五分の魂」は、小さく弱いものにもそれなりの意地や考えがある、という意味。
+「九死に一生を得る」は、ほとんど助からない状況から辛うじて助かること。
+「油を売る」は、仕事の途中でむだ話などをして時間をつぶすこと。
+「念を押す」は、間違いがないよう重ねて確かめること。
+「手を焼く」は、扱いに困ること。
+「腰が重い」は、なかなか行動を起こさないこと。
+「肩を持つ」は、一方の味方をすること。
+「目から鱗が落ちる」は、あることをきっかけに急によく理解できること。
+「水に流す」は、過去のもめ事などをなかったことにすること。
+「棚に上げる」は、自分のことは問題にせず放っておくこと。
+「足を引っ張る」は、他人の成功や前進をじゃますること。
+「白羽の矢が立つ」は、多くの中から特に選び出されること。
+「猫の手も借りたい」は、非常に忙しいことのたとえ。
+「日の目を見る」は、知られていなかったものが世に知られるようになること。
+「手に余る」は、自分の力では扱いきれないこと。
+「腑に落ちない」は、納得がいかないこと。
+「骨が折れる」は、苦労が多く大変なこと。
+「板につく」は、経験を積んで動作や態度がその立場にふさわしくなること。
+「気が置けない」は、遠慮がいらず打ち解けられること（「油断できない」という意味ではない）。
+「役不足」は本来、力量に対して役目が軽すぎること（「力不足」と混同されやすい）。
+「情けは人のためならず」は、人に親切にすれば巡って自分のためになるという意味（甘やかしの戒めではない）。
+「煮詰まる」は本来、議論が出尽くして結論が近づくこと（「行き詰まる」と混同されやすい）。
+「他山の石」は、他人の良くない言動も自分を磨く参考になる、という意味。`;async function sa(){try{let n=ra.split(`
+`).map(t=>t.trim()).filter(Boolean),e=await nt(Ls);e?e.version!==Mn&&await pe({...e,name:e.name||Rs,items:n,corpus:n.join(`
+`),vecs:null,model:null,builtin:!0,version:Mn,updatedAt:Date.now()}):await pe({id:Ls,name:Rs,items:n,corpus:n.join(`
+`),vecs:null,model:null,builtin:!0,version:Mn,updatedAt:Date.now()})}catch(n){console.warn("seedDict2:",n)}}var Os="col_dict3",Is="補助辞書3（ことばと記号）",Dn=1,oa=`AI＝Artificial Intelligence。人工知能のこと。
+IT＝Information Technology。情報技術のこと。
+ICT＝Information and Communication Technology。情報通信技術。
+OS＝Operating System。コンピュータの基本ソフト。
+PC＝Personal Computer。パソコンのこと。
+USB＝Universal Serial Bus。機器をつなぐ規格・端子。
+PDF＝Portable Document Format。レイアウトを保てる文書形式。
+URL＝Uniform Resource Locator。ウェブ上の住所。
+HTTP＝HyperText Transfer Protocol。ウェブ通信の規約。
+HTTPS＝HTTPに暗号化を加えた、安全な通信規約。
+HTML＝HyperText Markup Language。ウェブページを記述する言語。
+Wi-Fiは、無線でインターネットに接続する技術の名称。
+GPS＝Global Positioning System。衛星を使った位置測定システム。
+LAN＝Local Area Network。限られた範囲のネットワーク。
+VPN＝Virtual Private Network。安全に通信するための仮想的な専用線。
+ROM＝Read Only Memory。読み出し専用の記憶。
+SMS＝Short Message Service。携帯電話の短い文字メッセージ。
+SNS＝Social Networking Service。人とつながる交流サービス。
+App＝Application。アプリ（応用ソフト）のこと。
+QR＝Quick Response。二次元コードの一種（QRコード）。
+LED＝Light Emitting Diode。発光ダイオード。
+CD＝Compact Disc、DVD＝Digital Versatile Disc。どちらも光ディスクの規格。
+CSVは、表のデータをカンマ区切りで保存する形式。
+GIF・JPEG・PNGは、いずれも画像ファイルの形式の名称。
+ATM＝Automated Teller Machine。現金自動預け払い機。
+ID＝Identification。身分証明や識別のための名前・番号。
+PIN＝Personal Identification Number。暗証番号。
+FAQ＝Frequently Asked Questions。よくある質問。
+DIY＝Do It Yourself。自分で作ったり直したりすること。
+ETA＝Estimated Time of Arrival。到着予定時刻。
+ASAP＝As Soon As Possible。できるだけ早く。
+VIP＝Very Important Person。重要人物。
+e.g.は「例えば」（ラテン語 exempli gratia）。
+i.e.は「すなわち」（ラテン語 id est）。
+etc.は「など」（ラテン語 et cetera）。
+vs.は「対」「…に対して」（versus）。
+a.m.は午前、p.m.は午後（ラテン語由来）。
+RSVPは「ご返信ください」（フランス語由来）。
+CEO＝Chief Executive Officer。最高経営責任者。
+CFO＝Chief Financial Officer。最高財務責任者。
+COO＝Chief Operating Officer。最高執行責任者。
+CTO＝Chief Technology Officer。最高技術責任者。
+HR＝Human Resources。人事（部門）。
+PR＝Public Relations。広報。
+KPI＝Key Performance Indicator。重要業績評価指標。
+ROI＝Return On Investment。投資利益率。
+B2B＝Business to Business。企業どうしの取引。
+B2C＝Business to Consumer。企業と消費者の取引。
+GDP＝Gross Domestic Product。国内総生産。
+GNP＝Gross National Product。国民総生産。
+VAT＝Value Added Tax。付加価値税（消費税にあたる税）。
+NPO＝Non-Profit Organization。非営利組織。
+NGO＝Non-Governmental Organization。非政府組織。
+UN＝United Nations。国際連合（国連）。
+WHO＝World Health Organization。世界保健機関。
+UNESCO（ユネスコ）は、国連教育科学文化機関。
+UNICEF（ユニセフ）は、国連児童基金。
+NASAは、アメリカ航空宇宙局。
+EU＝European Union。欧州連合。
+％はパーセントと読み、100分の1を表す。
+‰はパーミルと読み、1000分の1を表す。
+±はプラスマイナスと読み、誤差の範囲や正負の両方を表す。
+≒はニアリーイコールと読み、ほぼ等しいことを表す。
+≠は「等しくない」を表す記号。
+≦は「以下」、≧は「以上」を表す記号。
+＜は「より小さい」、＞は「より大きい」を表す記号。
+√はルート（平方根）の記号。
+∞は無限大の記号。
+°は度。角度や温度に使う。
+′は分、″は秒（角度や時間の細かい単位）。
+©は著作権マーク（コピーライト）。
+®は登録商標マーク。
+™は商標マーク（トレードマーク）。
+＆はアンドと読み、「…と…」（and）を表す。
+＠はアットマーク。メールアドレスなどに使う。
+＃はシャープ（番号記号、ハッシュ）。
+※は注意や補足を示す記号（こめじるし）。
+〒は日本の郵便記号。
+／はスラッシュ。区切りや「または」を表す。
+〜は波ダッシュ。「…から…まで」の範囲を表す。
+・は中黒。並列や区切りに使う。
+「」はかぎかっこ。会話や引用を囲む。
+（）は丸かっこ。補足を囲む。
+＝はイコール。等しいことを表す。
+Σはシグマと読み、数学で合計を表す記号。
+Δはデルタと読み、差や変化量を表すことが多い。
+kmはキロメートル、mはメートル、cmはセンチメートル、mmはミリメートル。
+kgはキログラム、gはグラム、mgはミリグラム、tはトン。
+Lはリットル、mLはミリリットル。
+m²は平方メートル、m³は立方メートル。
+km/hは時速、m/sは秒速を表す。
+℃は度（摂氏）、Kはケルビン（温度の単位）。
+Hzはヘルツ（振動数・周波数）。
+Wはワット（仕事率・電力）、kWはキロワット。
+Vはボルト（電圧）、Aはアンペア（電流）、Ωはオーム（抵抗）。
+Jはジュール（エネルギー）、calはカロリー。
+Paはパスカル（圧力）、hPaはヘクトパスカル。
+Bはバイト、KBはキロバイト、MBはメガバイト、GBはギガバイト、TBはテラバイト。
+bpsはビット毎秒（通信速度の単位）。
+dBはデシベル（音の大きさなどを表す単位）。
+接頭辞k（キロ）は1,000倍を表す。
+接頭辞M（メガ）は100万倍（10の6乗倍）。
+接頭辞G（ギガ）は10億倍（10の9乗倍）。
+接頭辞T（テラ）は1兆倍（10の12乗倍）。
+接頭辞h（ヘクト）は100倍。
+接頭辞c（センチ）は100分の1。
+接頭辞d（デシ）は10分の1。
+接頭辞m（ミリ）は1,000分の1。
+接頭辞μ（マイクロ）は100万分の1。
+接頭辞n（ナノ）は10億分の1。
+ギリシャ文字の前半：α アルファ、β ベータ、γ ガンマ、δ デルタ、ε イプシロン、ζ ゼータ。
+ギリシャ文字の中盤：η イータ、θ シータ、ι イオタ、κ カッパ、λ ラムダ、μ ミュー。
+ギリシャ文字の後半：ν ニュー、ξ クサイ、ο オミクロン、π パイ、ρ ロー、σ シグマ。
+ギリシャ文字の終盤：τ タウ、υ ウプシロン、φ ファイ、χ カイ、ψ プサイ、ω オメガ。
+πはパイと読み、円周率を表す記号として使う。
+エビデンス＝根拠・証拠。
+コンセンサス＝合意・意見の一致。
+アジェンダ＝議題・検討課題。
+リスク＝危険や損失が起こる可能性。
+リソース＝資源（人・時間・お金・物など）。
+スキーム＝計画・仕組み。
+フィードバック＝意見や評価を返すこと。
+ブラッシュアップ＝磨きをかけて質を高めること。
+ペンディング＝保留・先送り。
+フィックス＝確定すること、または修正すること。
+デフォルト＝初期設定。または債務不履行のこと。
+イレギュラー＝例外的・不規則なこと。
+マスト＝必須・絶対に必要なこと。
+ニッチ＝すきま。小さいが特定の需要がある分野。
+ボトルネック＝全体の進行を妨げている部分。
+プライオリティ＝優先順位。
+メリット＝利点、デメリット＝欠点。
+ポテンシャル＝潜在的な力・可能性。
+モチベーション＝やる気・動機。
+ロジック＝論理・筋道。
+アナログ＝連続的な量で表す方式（デジタルの対）。
+デジタル＝数値（0と1など）で表す方式。
+オンライン＝ネットに接続した状態、オフライン＝接続していない状態。
+アップデート＝最新の状態に更新すること。
+インストール＝ソフトを導入すること、アンインストール＝削除すること。
+バックアップ＝予備の控えを取っておくこと。
+カスタマイズ＝自分用に作り変えること。
+シミュレーション＝模擬的に試すこと。
+プロトタイプ＝試作品。
+スペック＝性能・仕様。
+マニュアル＝手引き・取扱説明。または手動。
+インフラ＝社会や事業の基盤となる設備・仕組み。
+コミット＝強く関与・約束すること。
+ローンチ＝製品やサービスを世に出すこと。
+アサイン＝割り当て・任命すること。
+ナレッジ＝知識・知見。
+タスク＝やるべき作業・課題。
+クオリティ＝品質。
+トレンド＝流行・傾向。
+ジレンマ＝二つの選択肢の間で板ばさみになること。
+パラドックス＝一見矛盾しているが筋が通っている事柄。
+バイアス＝かたより・先入観。
+ニュアンス＝言葉や表現の微妙な意味合い。
+アイロニー＝皮肉。
+メタファー＝隠喩（たとえ）。
+ステレオタイプ＝型にはまった画一的な見方。
+日本の通貨は円で、記号は¥、通貨コードはJPY。
+アメリカの通貨はドルで、記号は$、通貨コードはUSD。
+ユーロ圏の通貨はユーロで、記号は€、通貨コードはEUR。
+イギリスの通貨はポンドで、記号は£、通貨コードはGBP。
+中国の通貨は人民元（コードCNY）、韓国はウォン（コードKRW）。
+英語の数：one＝1、two＝2、three＝3、four＝4、five＝5。
+英語の数：six＝6、seven＝7、eight＝8、nine＝9、ten＝10。
+曜日（英語）：Sunday＝日曜、Monday＝月曜、Tuesday＝火曜、Wednesday＝水曜。
+曜日（英語）：Thursday＝木曜、Friday＝金曜、Saturday＝土曜。
+月（英語）前半：January＝1月、February＝2月、March＝3月、April＝4月、May＝5月、June＝6月。
+月（英語）後半：July＝7月、August＝8月、September＝9月、October＝10月、November＝11月、December＝12月。
+色（英語）：red＝赤、blue＝青、yellow＝黄、green＝緑、black＝黒、white＝白。
+英語の基本：yes＝はい、no＝いいえ、please＝お願いします、thank you＝ありがとう。
+英語の基本：hello＝こんにちは、goodbye＝さようなら、sorry＝ごめんなさい。
+英語の基本：big＝大きい、small＝小さい、good＝よい、bad＝悪い。
+英語の基本：hot＝熱い・暑い、cold＝冷たい・寒い、new＝新しい、old＝古い。
+英語の基本：right＝右・正しい、left＝左、up＝上、down＝下。
+英語の基本：water＝水、food＝食べ物、money＝お金、time＝時間。`;async function ia(){try{let n=oa.split(`
+`).map(t=>t.trim()).filter(Boolean),e=await nt(Os);e?e.version!==Dn&&await pe({...e,name:e.name||Is,items:n,corpus:n.join(`
+`),vecs:null,model:null,builtin:!0,version:Dn,updatedAt:Date.now()}):await pe({id:Os,name:Is,items:n,corpus:n.join(`
+`),vecs:null,model:null,builtin:!0,version:Dn,updatedAt:Date.now()})}catch(n){console.warn("seedDict3:",n)}}var aa=[{key:"Qwen2.5-0.5B-Instruct",name:"Qwen2.5 0.5B",desc:"最軽量・最速。動作確認向き"},{key:"Llama-3.2-1B-Instruct",name:"Llama 3.2 1B",desc:"軽さと賢さのバランス（推奨）"},{key:"Qwen2.5-1.5B-Instruct",name:"Qwen2.5 1.5B",desc:"少し賢い。日本語も比較的安定"},{key:"gemma-2-2b-it",name:"Gemma 2 2B",desc:"賢いが重い。高速なGPU向け"},{key:"Llama-3.2-3B-Instruct",name:"Llama 3.2 3B",desc:"このリストで最も賢い・最も重い"}],Me=[];function la(){let n=Z.prebuiltAppConfig?.model_list||[];for(let e of aa){let t=n.filter(s=>s.model_id.includes(e.key));if(!t.length)continue;let r=t.find(s=>s.model_id.includes("q4f16_1"))||t.find(s=>s.model_id.includes("q4f32_1"))||t[0];Me.push({id:r.model_id,name:e.name,desc:e.desc,memMB:r.vram_required_MB||null})}}var qs=n=>n?n>=1024?`~${(n/1024).toFixed(1)}GB`:`~${Math.round(n)}MB`:"—";function ca(){o.modelSelect.innerHTML="",Me.forEach(n=>{let e=y("option");e.value=n.id,e.textContent=n.name,n.name.includes("1B")&&(e.selected=!0),o.modelSelect.appendChild(e)}),!o.modelSelect.value&&Me[0]&&(o.modelSelect.value=Me[0].id),Vs()}function Vs(){let n=Me.find(e=>e.id===o.modelSelect.value);o.modelDesc.textContent=n?n.desc:"—",o.modelMem.textContent=n?"メモリ目安 "+qs(n.memMB):"—"}o.modelSelect.addEventListener("change",Vs);async function ua(){try{if(!navigator.gpu)return null;let n=await navigator.gpu.requestAdapter();if(!n)return"WebGPU";let e=n.info||(n.requestAdapterInfo?await n.requestAdapterInfo():null);return e&&[e.vendor,e.architecture].filter(Boolean).join(" ").trim()||"WebGPU"}catch{return"WebGPU"}}var U=null,Je=null,Hn=!1,Ms=null,Ee=!1,R=null,Pe=null,C=[];async function pa(n,e){try{Je||(Je=new Worker("worker.js",{type:"module"}));let t=await Z.CreateWebWorkerMLCEngine(Je,n,{initProgressCallback:e});return Hn=!0,t}catch(t){if(console.warn("Worker engine unavailable, using main thread:",t),Je){try{Je.terminate()}catch{}Je=null}return Hn=!1,await Z.CreateMLCEngine(n,{initProgressCallback:e})}}o.igniteBtn.addEventListener("click",da);async function da(){let n=o.modelSelect.value;if(U&&Ms===n){Ds();return}Ps(!0),o.progress.classList.add("on"),Pn(0,"初期化中…");try{let e=r=>Pn(Math.max(0,Math.min(1,r.progress||0)),r.text||"読み込み中…");U?(U.setInitProgressCallback(e),await U.reload(n)):U=await pa(n,e),Ms=n;let t=Me.find(r=>r.id===n);o.roModel.textContent=t?t.name:n,o.roMem.textContent=t?qs(t.memMB):"—",o.roGpu.textContent=await ua()||"WebGPU",o.roThread.textContent=Hn?"worker":"main",o.roTps.textContent="— tok/s",Pn(1,"起動完了"),Ds()}catch(e){console.error(e),Ps(!1),o.progressText.textContent="起動に失敗しました："+(e?.message||e),o.progressText.style.color="var(--danger)",o.progressPct.textContent=""}}function Ds(){Pe?ge("tool"):R?ge("chat"):Qn("chars")}function Ps(n){o.igniteBtn.disabled=n,o.modelSelect.disabled=n,o.igniteLabel.textContent=n?"起動中…":"モデルを起動"}function Pn(n,e){o.barFill.style.width=Math.round(n*100)+"%",o.progressPct.textContent=Math.round(n*100)+"%",o.progressText.style.color="",o.progressText.textContent=e}var At="chars",Ze=null,et=null,Q=null,Qe=null,Ys=n=>n+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);function ge(n){o.boot.hidden=n!=="boot",o.home.hidden=n!=="home",o.chatWrap.hidden=n!=="chat",o.toolView.hidden=n!=="tool",o.readout.classList.toggle("on",n==="chat"||n==="tool"),o.composer.classList.toggle("on",n==="chat"),o.ragBar.classList.toggle("on",n==="chat"),n==="chat"&&il(),o.personaChip.classList.toggle("show",n==="chat"||n==="tool"),o.newBtn.hidden=n!=="chat",o.ttsBtn.hidden=!(n==="chat"&&Be),o.modelBtn.hidden=n==="boot",n!=="chat"&&(tt(),pr()),n==="chat"&&setTimeout(()=>o.input.focus(),60),o.main.scrollTop=0}function Wt(n){o.charsTab.hidden=n!=="chars",o.toolsTab.hidden=n!=="tools",o.histTab.hidden=n!=="hist",o.tabChars.classList.toggle("active",n==="chars"),o.tabTools.classList.toggle("active",n==="tools"),o.tabHist.classList.toggle("active",n==="hist"),n==="hist"&&lo()}function Qn(n){vt("#F2B441"),tr(),Na(),Qs(),Wt(Ze!=null?"chars":n||"chars"),o.sendHint.hidden=Ze==null,ge("home")}var Js="ember.memory.v1";function Kn(){try{return JSON.parse(localStorage.getItem(Js))||[]}catch{return[]}}function fa(n){try{localStorage.setItem(Js,JSON.stringify(n))}catch{}}function ha(){let n=Kn();return n.length?`
+
+[ユーザーについて覚えていること]
+`+n.map(e=>"- "+e).join(`
+`)+`
+これらを自然に考慮して応答してください。聞かれていないのに無理に列挙しないこと。`:""}function Qs(){if(!o.memSummary)return;let n=Kn().length;o.memSummary.textContent=n?n+"件 記憶中（タップで編集）":"まだ何も覚えていません（タップで追加）"}function ma(){o.memText.value=Kn().join(`
+`),o.memModal.classList.add("on"),setTimeout(()=>o.memText.focus(),60)}function Zn(){o.memModal.classList.remove("on")}o.memBar.addEventListener("click",ma);o.memClose.addEventListener("click",Zn);o.memModal.addEventListener("click",n=>{n.target===o.memModal&&Zn()});o.memSave.addEventListener("click",()=>{let n=o.memText.value.split(`
+`).map(e=>e.trim()).filter(Boolean);fa(n),Qs(),Zn(),ue("🧠 メモリを更新しました。次の会話から反映されます。",3e3)});function Xn(){if(Ze==null)return;let n=Ze;Ze=null,o.input.value=(o.input.value?o.input.value+`
+
+`:"")+n,o.input.dispatchEvent(new Event("input")),o.emptyChat.hidden=!0,setTimeout(()=>o.input.focus(),80)}function er(n){!n||!n.trim()||(Ze=n,R?(Pe=null,At="chars",vt(R.accent),o.chipAva.textContent=R.emoji,o.chipName.textContent=R.name,ge("chat"),Xn()):Qn("chars"))}o.modelBtn.addEventListener("click",()=>ge("boot"));o.personaChip.addEventListener("click",()=>Qn(At));o.newBtn.addEventListener("click",()=>{R&&nr(R)});o.tabChars.addEventListener("click",()=>Wt("chars"));o.tabTools.addEventListener("click",()=>Wt("tools"));o.tabHist.addEventListener("click",()=>Wt("hist"));function vt(n){document.documentElement.style.setProperty("--accent",n);let e=document.querySelector('meta[name="theme-color"]');e&&e.setAttribute("content","#12141C")}function tr(){o.charGrid.innerHTML="",Zi().forEach((e,t)=>{let r=y("button","card");r.style.setProperty("--c",e.accent),r.style.animationDelay=t*.035+"s";let s=y("div","medallion",e.emoji);if(s.setAttribute("aria-hidden","true"),r.append(s,y("div","cname",e.name),y("div","crole",e.role)),e.custom){let i=y("button","del","×");i.title="削除",i.addEventListener("click",l=>{l.stopPropagation(),ga(e.id)}),r.append(i)}r.addEventListener("click",()=>ya(e)),o.charGrid.appendChild(r)});let n=y("button","card add");n.append(y("div","plus","＋"),y("div",null,"自分でつくる")),n.addEventListener("click",_a),o.charGrid.appendChild(n)}function ga(n){St=St.filter(e=>e.id!==n),Ws(),R&&R.id===n&&(R=null),tr()}function ya(n){if(R&&R.id===n.id&&C.length>1){ge("chat"),Xn();return}nr(n)}function nr(n){tt(),Pe=null,et=Ys("conv"),At="chars",R=n,vt(n.accent),o.chipAva.textContent=n.emoji,o.chipName.textContent=n.name,C=[{role:"system",content:n.system}],o.transcript.innerHTML="",n.greeting&&(Xe("ai").textContent=n.greeting),o.suggest.innerHTML="",(n.starters||[]).forEach(e=>{let t=y("button","chip",e);t.addEventListener("click",()=>{o.input.value=e,o.input.dispatchEvent(new Event("input")),rr()}),o.suggest.appendChild(t)}),o.emptyChat.hidden=!1,ge("chat"),Xn()}function Xe(n,e){let t=y("div","turn "+(n==="user"?"user":"ai"));e!=null&&(t.dataset.mi=e);let r=y("div","bubble");if(n==="user")t.append(y("div","role-tag","you"),r);else{let s=y("div","ai-head"),i=y("span","mini-ava",R?R.emoji:"✦");if(R&&i.style.setProperty("--c",R.accent),s.append(i,y("span","ai-name",R?R.name:"ember")),Be){let l=y("button","spk");l.type="button",l.title="読み上げ",l.setAttribute("aria-label","読み上げ"),l.innerHTML=Aa,l.addEventListener("click",()=>Ia(l,r)),s.append(l)}t.append(s,r)}return e!=null&&t.append(Ta(n,t)),o.transcript.appendChild(t),r}function Ta(n,e){let t=y("div","msg-actions");if(n==="user"){let r=y("button","mbtn","編集");r.addEventListener("click",()=>ka(+e.dataset.mi,e));let s=y("button","mbtn","削除");s.addEventListener("click",()=>Ns(+e.dataset.mi)),t.append(r,s)}else{let r=y("button","mbtn","コピー");r.addEventListener("click",()=>ba(+e.dataset.mi,r));let s=y("button","mbtn regen","再生成");s.addEventListener("click",()=>wa(+e.dataset.mi));let i=y("button","mbtn","削除");i.addEventListener("click",()=>Ns(+e.dataset.mi)),t.append(r,s,i)}return t}function ba(n,e){let t=C[n];t&&(navigator.clipboard.writeText(t.content||"").then(()=>{e.textContent="コピー✓"},()=>{e.textContent="失敗"}),setTimeout(()=>{e.textContent="コピー"},1200))}function Ns(n){if(Ee)return;let e=C[n];e&&(e.role==="user"&&C[n+1]&&C[n+1].role==="assistant"?C.splice(n,2):C.splice(n,1),_t(),ao())}function ka(n,e){if(Ee)return;let t=C[n]&&C[n].content||"";e.innerHTML="";let r=y("textarea","edit-ta");r.value=t,r.rows=2;let s=y("div","edit-row"),i=y("button","edit-save","保存して再送"),l=y("button","edit-cancel","キャンセル");s.append(l,i),e.append(r,s);let u=()=>{r.style.height="auto",r.style.height=Math.min(r.scrollHeight,220)+"px"};r.addEventListener("input",u),setTimeout(()=>{r.focus(),u()},0),l.addEventListener("click",()=>_t()),i.addEventListener("click",async()=>{let d=r.value.trim();d&&(C[n]={role:"user",content:d},C.length=n+1,_t(),await sr())})}async function wa(n){Ee||!C[n]||C[n].role!=="assistant"||(C.length=n,_t(),await sr())}function _t(){if(o.transcript.innerHTML="",R&&R.greeting){let n=Xe("ai");n.textContent=R.greeting}for(let n=1;n<C.length;n++){let e=C[n];e.role==="user"?Xe("user",n).textContent=e.content:e.role==="assistant"&&Ks(Xe("ai",n),e.content)}o.emptyChat.hidden=C.length>1,Ie()}var Ie=()=>{o.main.scrollTop=o.main.scrollHeight},he=null;async function xa(){if(he!==null)return he;try{_.setOptions&&_.setOptions({breaks:!0,gfm:!0}),he={marked:_,DOMPurify:Ss}}catch(n){console.warn("markdown init failed:",n),he=!1}return he}function Ks(n,e){if(he&&he.marked)try{let t=he.marked.parse(e||"");n.innerHTML=he.DOMPurify.sanitize(typeof t=="string"?t:String(t)),n.classList.add("md"),Ea(n),n.querySelectorAll("a[href]").forEach(r=>{r.target="_blank",r.rel="noopener noreferrer"});return}catch(t){console.warn("md render:",t)}n.textContent=e||""}function Ea(n){n.querySelectorAll("pre").forEach(e=>{if(e.parentElement&&e.parentElement.classList.contains("code-block"))return;let t=e.querySelector("code"),r="";if(t){let u=(t.className||"").match(/language-([\w+#-]+)/);u&&(r=u[1])}let s=y("div","code-block"),i=y("div","code-head");i.appendChild(y("span",null,r||"code"));let l=y("button","code-copy","コピー");l.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(t?t.textContent:e.textContent),l.textContent="コピー✓"}catch{l.textContent="失敗"}setTimeout(()=>{l.textContent="コピー"},1200)}),i.appendChild(l),e.parentNode.insertBefore(s,e),s.appendChild(i),s.appendChild(e)})}function $n(){o.sendBtn.disabled=!o.input.value.trim()||Ee||!U}o.input.addEventListener("input",()=>{o.input.style.height="auto",o.input.style.height=Math.min(o.input.scrollHeight,160)+"px",$n()});o.input.addEventListener("keydown",n=>{n.key==="Enter"&&!n.shiftKey&&(n.preventDefault(),o.sendBtn.disabled||rr())});o.sendBtn.addEventListener("click",rr);o.stopBtn.addEventListener("click",()=>{U&&U.interruptGenerate()});async function rr(){if(Ee||!U)return;let n=o.input.value.trim();n&&(tt(),pr(),cr(),o.emptyChat.hidden=!0,o.input.value="",o.input.style.height="auto",C.push({role:"user",content:n}),Xe("user",C.length-1).textContent=n,Ie(),await sr())}async function sr(){if(Ee||!U)return;let n=C.slice().reverse().find(g=>g.role==="user");if(!n)return;let e=n.content;Ee=!0,o.sendBtn.hidden=!0,o.stopBtn.hidden=!1,o.liveDot.classList.add("live"),$n();let t=[];if(Q){wt?ue("📎 メモを検索中…",1500):ue("ノート検索用モデルを準備中…（初回のみ時間がかかります）",6e3);try{t=await ol(e,4)}catch(g){console.warn("rag:",g),ue("ノート検索を準備できませんでした（初回はネット接続が必要）。通常の回答をします。",5e3),t=[]}if(t.length){let g=y("details","rag-cite");g.appendChild(y("summary",null,"📎 参照したメモ "+t.length+"件")),t.forEach((k,A)=>g.appendChild(y("div","rag-cite-item",A+1+". "+k.t))),o.transcript.appendChild(g),Ie()}}let r=C.length,s=Xe("ai",r);s.classList.add("caret"),Ie();let i=C.slice(),l=ha();if(l&&i[0]&&i[0].role==="system"&&(i[0]={role:"system",content:i[0].content+l}),t.length){let g=`次のメモを参考に、必要なら内容を使って質問に答えてください。メモに無いことは推測で断定せず、その場合は分かる範囲で答えるか「メモには見当たりません」と述べてください。
+
+# メモ
+`+t.map((k,A)=>A+1+". "+k.t).join(`
+`)+`
+
+# 質問
+`+e;i[i.length-1]={role:"user",content:g}}let u="",d=0,T=0,m=performance.now();try{let g=await U.chat.completions.create({messages:i,stream:!0,temperature:.7});for await(let k of g){let A=k.choices?.[0]?.delta?.content||"";if(!A)continue;T||(T=performance.now()),d++,u+=A,s.textContent=u;let w=(performance.now()-T)/1e3;w>.05&&d>1&&(o.roTps.textContent=(d/w).toFixed(1)+" tok/s"),Ie()}}catch(g){console.error(g),u+=(u?`
+
+`:"")+"⚠️ 生成中にエラー: "+(g?.message||g),s.textContent=u}finally{s.classList.remove("caret"),u.trim()?(C.push({role:"assistant",content:u}),Ks(s,u)):s.parentElement&&s.parentElement.remove(),ao();let g=(performance.now()-(T||m))/1e3;if(d>1&&g>0&&(o.roTps.textContent=(d/g).toFixed(1)+" tok/s"),Ee=!1,o.stopBtn.hidden=!0,o.sendBtn.hidden=!1,o.liveDot.classList.remove("live"),$n(),Ie(),Ke&&u.trim()){let k=s.parentElement?s.parentElement.querySelector(".spk"):null;ur(u,k)}}}var or=Yn[0],ir=Jn[0];function Sa(){o.emojiRow.innerHTML="",Yn.forEach(n=>{let e=y("button","emoji-pick",n);e.addEventListener("click",()=>{or=n,[...o.emojiRow.children].forEach(t=>t.classList.remove("sel")),e.classList.add("sel")}),o.emojiRow.appendChild(e)}),o.swatchRow.innerHTML="",Jn.forEach(n=>{let e=y("button","swatch");e.style.background=n,e.setAttribute("aria-label",n),e.addEventListener("click",()=>{ir=n,[...o.swatchRow.children].forEach(t=>t.classList.remove("sel")),e.classList.add("sel")}),o.swatchRow.appendChild(e)})}function _a(){or=Yn[0],ir=Jn[0],o.cpName.value="",o.cpPrompt.value="",o.cpErr.textContent="",[...o.emojiRow.children].forEach((n,e)=>n.classList.toggle("sel",e===0)),[...o.swatchRow.children].forEach((n,e)=>n.classList.toggle("sel",e===0)),o.creator.classList.add("on"),setTimeout(()=>o.cpName.focus(),60)}function ar(){o.creator.classList.remove("on")}o.cpCancel.addEventListener("click",ar);o.creator.addEventListener("click",n=>{n.target===o.creator&&ar()});o.cpSave.addEventListener("click",()=>{let n=o.cpName.value.trim(),e=o.cpPrompt.value.trim();if(!n){o.cpErr.textContent="名前を入力してください。";return}if(e.length<8){o.cpErr.textContent="性格・話し方をもう少し書いてください（8文字以上）。";return}let t={id:"c_"+Date.now().toString(36),name:n,emoji:or,accent:ir,role:"あなたのキャラクター",greeting:"やあ、わたしは"+n+"。よろしくね。",system:e,starters:["自己紹介して","何ができる？","雑談しよう"],custom:!0};St.push(t),Ws(),ar(),tr(),nr(t)});var Aa='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 9a3 3 0 0 1 0 6"/></svg>',Be="speechSynthesis"in window&&"SpeechSynthesisUtterance"in window,Zs=window.SpeechRecognition||window.webkitSpeechRecognition,lr=!!Zs,va={rion:{rate:.98,pitch:.92},nyx:{rate:1.08,pitch:1},sora:{rate:.96,pitch:1.06},haru:{rate:1.12,pitch:1.12},mike:{rate:1.06,pitch:1.3},crow:{rate:.92,pitch:.82}},Ca=n=>n&&va[n.id]||{rate:1,pitch:1},jn=null;function Bs(){if(!Be)return;let n=speechSynthesis.getVoices()||[];jn=n.find(e=>/ja[-_]?jp/i.test(e.lang))||n.find(e=>/^ja/i.test(e.lang))||null}Be&&(Bs(),speechSynthesis.onvoiceschanged=Bs);var La=n=>(n||"").replace(/[*_`#>~]/g,"").replace(/\s+/g," ").trim(),Fs=!1;function cr(){if(!(!Be||Fs))try{speechSynthesis.resume();let n=new SpeechSynthesisUtterance(" ");n.volume=0,speechSynthesis.speak(n),Fs=!0}catch{}}var Ut=null;function Ra(){Gn(),Ut=setInterval(()=>{if(speechSynthesis.speaking)try{speechSynthesis.pause(),speechSynthesis.resume()}catch{}else Gn()},11e3)}function Gn(){Ut&&(clearInterval(Ut),Ut=null)}var kt=null;function Oa(n,e){if(!Be||!n)return null;try{(speechSynthesis.speaking||speechSynthesis.pending)&&speechSynthesis.cancel(),speechSynthesis.resume();let t=new SpeechSynthesisUtterance(n);t.lang="ja-JP",jn&&(t.voice=jn);let r=Ca(e);return t.rate=r.rate,t.pitch=r.pitch,t.volume=1,t.addEventListener("start",()=>clearTimeout(kt)),t.addEventListener("error",s=>{clearTimeout(kt),console.warn("TTS error:",s&&s.error)}),speechSynthesis.speak(t),Ra(),clearTimeout(kt),kt=setTimeout(()=>{!speechSynthesis.speaking&&!speechSynthesis.pending&&ue("読み上げが再生されませんでした。Android では端末の音声エンジンに日本語の音声データが必要です（設定 → 音声入力と出力 → テキスト読み上げ）。メディア音量・サイレントもご確認ください。",9e3)},1300),t}catch(t){return console.warn("TTS:",t),null}}function tt(){try{Be&&speechSynthesis.cancel()}catch{}Gn(),clearTimeout(kt),document.querySelectorAll(".spk.on").forEach(n=>n.classList.remove("on"))}function ur(n,e){let t=Oa(La(n),R);t&&(document.querySelectorAll(".spk.on").forEach(r=>r.classList.remove("on")),e&&(e.classList.add("on"),t.addEventListener("end",()=>e.classList.remove("on")),t.addEventListener("error",()=>e.classList.remove("on"))))}function Ia(n,e){if(cr(),n.classList.contains("on")){tt(),n.classList.remove("on");return}ur(e.textContent,n)}var Ke=!1;o.ttsBtn.addEventListener("click",()=>{if(cr(),Ke=!Ke,o.ttsBtn.classList.toggle("active",Ke),o.ttsBtn.setAttribute("aria-pressed",Ke?"true":"false"),!Ke){tt();return}ur("読み上げをオンにしました。",null)});var zs=null;function ue(n,e){o.toast.textContent=n,o.toast.classList.add("show"),clearTimeout(zs),zs=setTimeout(()=>o.toast.classList.remove("show"),e||4800)}var Ht=null,qt=!1,Us="",Nn="";function Wn(){qt=!1,o.micBtn.classList.remove("listening")}function Ma(){if(!lr)return null;let n=new Zs;return n.lang="ja-JP",n.continuous=!0,n.interimResults=!0,n.onstart=()=>{qt=!0,o.micBtn.classList.add("listening"),Us=o.input.value?o.input.value.replace(/\s*$/,"")+" ":"",Nn=""},n.onresult=e=>{let t="";for(let r=e.resultIndex;r<e.results.length;r++){let s=e.results[r];s.isFinal?Nn+=s[0].transcript:t+=s[0].transcript}o.input.value=Us+Nn+t,o.input.dispatchEvent(new Event("input"))},n.onerror=e=>{e.error==="not-allowed"||e.error==="service-not-allowed"?ue("マイクの使用が許可されていません。ブラウザの設定で許可してください。"):e.error!=="aborted"&&e.error!=="no-speech"&&ue("音声入力エラー: "+e.error),Wn()},n.onend=()=>Wn(),n}function pr(){try{Ht&&qt&&Ht.stop()}catch{}Wn()}o.micBtn.addEventListener("click",()=>{if(!lr){ue("このブラウザは音声入力に対応していません。");return}if(qt){pr();return}Da("ember.voiceNoticeSeen")||(ue("音声入力は、お使いのブラウザによっては音声がクラウドの認識サービスに送られることがあります（読み上げは端末内で完結します）。",7e3),Pa("ember.voiceNoticeSeen"));try{Ht.start()}catch{}});var Da=n=>{try{return localStorage.getItem(n)}catch{return null}},Pa=n=>{try{localStorage.setItem(n,"1")}catch{}},Xs=[{id:"extract",name:"構造化抽出",emoji:"🧩",accent:"#46C9B0",role:"文章 → JSON"},{id:"ocr",name:"画像OCR",emoji:"📷",accent:"#F2884B",role:"画像 → 文字 → 道具箱"},{id:"transform",name:"変換ツール",emoji:"🔄",accent:"#A78BFA",role:"要約・翻訳・言い換え"},{id:"semantic",name:"意味検索",emoji:"🔎",accent:"#5B9BF2",role:"埋め込みで似た項目を検索"},{id:"playground",name:"プレイグラウンド",emoji:"🎛️",accent:"#F2B441",role:"パラメータ＋seed＋JSON"}];function Na(){o.toolGrid.innerHTML="",Xs.forEach((n,e)=>{let t=y("button","card");t.style.setProperty("--c",n.accent),t.style.animationDelay=e*.035+"s";let r=y("div","medallion",n.emoji);r.setAttribute("aria-hidden","true"),t.append(r,y("div","cname",n.name),y("div","crole",n.role)),t.addEventListener("click",()=>eo(n)),o.toolGrid.appendChild(t)})}function eo(n){Pe=n,At="tools",vt(n.accent),o.chipAva.textContent=n.emoji,o.chipName.textContent=n.name,o.toolMed.textContent=n.emoji,o.toolMed.style.setProperty("--c",n.accent),o.toolTitle.textContent=n.name,o.toolRole.textContent=n.role,o.extractPanel.hidden=n.id!=="extract",o.transformPanel.hidden=n.id!=="transform",o.playgroundPanel.hidden=n.id!=="playground",o.ocrPanel.hidden=n.id!=="ocr",o.semPanel.hidden=n.id!=="semantic",n.id==="semantic"&&sl(),ge("tool")}async function Ba(n,e){let t=await U.chat.completions.create(Object.assign({messages:n,stream:!1},e||{}));return t.choices&&t.choices[0]&&t.choices[0].message&&t.choices[0].message.content||""}async function dr(n,e,t){let r=await U.chat.completions.create(Object.assign({messages:n,stream:!0},e||{})),s="";for await(let i of r){let l=i.choices&&i.choices[0]&&i.choices[0].delta&&i.choices[0].delta.content;l&&(s+=l,t&&t(s))}return s}function Vt(n){let e=n.parentElement;if(!e||e.querySelector(".out-actions"))return;let t=y("div","out-actions"),r=y("button","obtn","チャットへ");r.addEventListener("click",()=>er(n.textContent||""));let s=y("button","obtn","コピー");s.addEventListener("click",async()=>{let i=n.textContent||"";if(i.trim()){try{await navigator.clipboard.writeText(i),s.textContent="コピー✓"}catch{s.textContent="コピー失敗"}setTimeout(()=>{s.textContent="コピー"},1200)}}),t.append(r,s),e.appendChild(t)}var Fa=[{label:"連絡先",fields:"名前, 会社, 電話番号, メール"},{label:"予定",fields:"件名, 日付, 開始時刻, 場所"},{label:"レシピ",fields:"料理名, 材料, 手順, 人数"}];function za(){o.exPresets.innerHTML="",Fa.forEach(n=>{let e=y("button","chip",n.label);e.addEventListener("click",()=>{o.exFields.value=n.fields}),o.exPresets.appendChild(e)})}async function Ua(){if(!U)return;let n=o.exInput.value.trim(),e=o.exFields.value.split(/[,、\n]/).map(s=>s.trim()).filter(Boolean);if(!n){o.exOut.textContent="元の文章を入力してください。";return}if(!e.length){o.exOut.textContent="取り出す項目を入力してください。";return}o.exRun.disabled=!0,o.exOut.textContent="抽出中…";let t="あなたは情報抽出器です。与えられた文章から指定された項目を抽出し、JSONオブジェクトだけを返します。値が見つからない項目はnullにします。説明や前置き・コードブロックは書かないこと。",r=`文章:
+`+n+`
+
+抽出する項目: `+e.join(", ")+`
+これらをキーに持つJSONオブジェクトで返してください。`;try{let s=await Ba([{role:"system",content:t},{role:"user",content:r}],{temperature:.2,response_format:{type:"json_object"}}),i=s;try{i=JSON.stringify(JSON.parse(s),null,2)}catch{}o.exOut.textContent=i}catch(s){o.exOut.textContent="エラー: "+(s&&s.message||s)}finally{o.exRun.disabled=!1}}var to=[{key:"summary",label:"要約",sys:"あなたは要約器です。要点を保ったまま簡潔にまとめます。",make:n=>`次の文章を3〜5文で要約してください。要約だけを返してください:
+
+`+n},{key:"bullets",label:"箇条書き",sys:"あなたは編集者です。",make:n=>`次の文章の要点を、日本語の箇条書き（・）で5項目以内にまとめてください:
+
+`+n},{key:"ja",label:"日本語に翻訳",sys:"あなたは翻訳者です。意味を保って自然に訳します。",make:n=>`次の文章を自然な日本語に翻訳してください。訳文だけを返してください:
+
+`+n},{key:"en",label:"英語に翻訳",sys:"You are a professional translator.",make:n=>`Translate the following into natural English. Return only the translation:
+
+`+n},{key:"soften",label:"やわらかく",sys:"あなたは文章編集者です。",make:n=>`次の文章を、丁寧でやわらかい口調に言い換えてください。言い換えた文だけを返してください:
+
+`+n},{key:"proof",label:"校正",sys:"あなたは校正者です。",make:n=>`次の文章の誤字脱字や不自然な表現を直し、修正後の文章だけを返してください:
+
+`+n}],Bn=!1;function Ha(){o.tfOps.innerHTML="",to.forEach(n=>{let e=y("button","chip",n.label);e.addEventListener("click",()=>$a(n)),o.tfOps.appendChild(e)})}async function $a(n){if(!U||Bn)return;let e=o.tfInput.value.trim();if(!e){o.tfOut.textContent="元の文章を入力してください。";return}Bn=!0,Array.from(o.tfOps.children).forEach(t=>t.disabled=!0),o.tfOut.textContent="";try{await dr([{role:"system",content:n.sys},{role:"user",content:n.make(e)}],{temperature:.5},t=>{o.tfOut.textContent=t})}catch(t){o.tfOut.textContent="エラー: "+(t&&t.message||t)}finally{Bn=!1,Array.from(o.tfOps.children).forEach(t=>t.disabled=!1)}}var Fn=!1;function Yt(){o.pgTempV.textContent=(+o.pgTemp.value).toFixed(2),o.pgToppV.textContent=(+o.pgTopp.value).toFixed(2),o.pgMaxV.textContent=o.pgMax.value}async function ja(){if(!U||Fn)return;let n=o.pgUser.value.trim();if(!n){o.pgOut.textContent="ユーザープロンプトを入力してください。";return}let e=o.pgSystem.value.trim(),t=[];e&&t.push({role:"system",content:e}),t.push({role:"user",content:n});let r={temperature:+o.pgTemp.value,top_p:+o.pgTopp.value,max_tokens:parseInt(o.pgMax.value,10)},s=o.pgSeed.value.trim();s!==""&&(r.seed=parseInt(s,10)),o.pgJson.checked&&(r.response_format={type:"json_object"}),Fn=!0,o.pgRun.hidden=!0,o.pgStop.hidden=!1,o.pgOut.textContent="";try{let i=await dr(t,r,l=>{o.pgOut.textContent=l});if(o.pgJson.checked)try{o.pgOut.textContent=JSON.stringify(JSON.parse(i),null,2)}catch{}}catch(i){o.pgOut.textContent="エラー: "+(i&&i.message||i)}finally{Fn=!1,o.pgStop.hidden=!0,o.pgRun.hidden=!1}}o.exRun.addEventListener("click",Ua);o.pgRun.addEventListener("click",ja);o.pgStop.addEventListener("click",()=>{try{U&&U.interruptGenerate()}catch{}});o.pgTemp.addEventListener("input",Yt);o.pgTopp.addEventListener("input",Yt);o.pgMax.addEventListener("input",Yt);var Oe=null,Hs=null,zn=!1,$t=null,Un=!1,qn=null;async function Ga(n){if(Oe&&Hs===n)return Oe;if(Oe){try{await Oe.terminate()}catch{}Oe=null}let e=await import("https://esm.run/tesseract.js");return Oe=await(e.default&&e.default.createWorker||e.createWorker)(n,1,{logger:r=>{$t&&$t(r)}}),Hs=n,Oe}function Wa(n){return new Promise((e,t)=>{let r=URL.createObjectURL(n),s=new Image;s.onload=()=>e({img:s,url:r}),s.onerror=i=>{URL.revokeObjectURL(r),t(i)},s.src=r})}async function qa(n,e){let{img:t,url:r}=await Wa(n),s=t.naturalWidth||t.width,i=t.naturalHeight||t.height,l=Math.max(s,i),u=Math.min(s,i),d=1;e.upscale&&u<1e3&&(d=Math.min(3,1e3/u)),l*d>2200&&(d=2200/l);let T=Math.max(1,Math.round(s*d)),m=Math.max(1,Math.round(i*d)),g=document.createElement("canvas");g.width=T,g.height=m;let k=g.getContext("2d");if(k.imageSmoothingEnabled=!0,k.imageSmoothingQuality="high",k.drawImage(t,0,0,T,m),URL.revokeObjectURL(r),e.gray||e.threshold){let A=k.getImageData(0,0,T,m),w=A.data;for(let O=0;O<w.length;O+=4){let B=.299*w[O]+.587*w[O+1]+.114*w[O+2];e.threshold&&(B=B>150?255:0),w[O]=w[O+1]=w[O+2]=B}k.putImageData(A,0,0)}return g}function bt(n,e){o.ocrStatus.hidden=!1,o.ocrBar.style.width=(e||0)+"%",o.ocrStatusText.textContent=n}function fr(n){if(!n||!(n.type||"").startsWith("image/"))return;qn=n;let e=URL.createObjectURL(n);o.ocrPreview.src=e,o.ocrPreview.hidden=!1,o.ocrDropInner.hidden=!0,o.ocrRerunBtn.hidden=!1,no(n)}async function no(n){if(!(zn||!n)){zn=!0,o.ocrRerunBtn.disabled=!0,o.ocrText.value="",o.ocrActions.hidden=!0,o.ocrOut.textContent="",bt("準備中 0%",0),$t=e=>{let t=Math.round((e.progress||0)*100),r=e.status==="recognizing text"?"認識中":"準備中（データ読み込み）";bt(r+" "+t+"%",t)};try{let e=o.ocrLang.value||"jpn+eng",t=await qa(n,{upscale:o.ocrUpscale.checked,gray:o.ocrGray.checked,threshold:o.ocrThresh.checked}),s=await(await Ga(e)).recognize(t),i=(s&&s.data&&s.data.text||"").replace(/\n{3,}/g,`
+
+`).trim();o.ocrText.value=i,i?(bt("完了 100%",100),o.ocrActions.hidden=!1):bt("文字を検出できませんでした。言語や前処理を変えて再認識してみてください。",0)}catch(e){console.error(e),bt("OCRエラー: "+(e&&e.message||e)+"（初回はネット接続が必要です）",0)}finally{zn=!1,$t=null,o.ocrRerunBtn.disabled=!1}}}function Va(){o.ocrOps.innerHTML="";let n=["summary","bullets","ja","en","proof"];to.filter(e=>n.includes(e.key)).forEach(e=>{let t=y("button","chip",e.label);t.addEventListener("click",()=>Ya(e)),o.ocrOps.appendChild(t)})}async function Ya(n){if(!U||Un)return;let e=o.ocrText.value.trim();if(!e){o.ocrOut.textContent="先に画像から文字を認識してください。";return}Un=!0,Array.from(o.ocrOps.children).forEach(t=>t.disabled=!0),o.ocrOut.textContent="";try{await dr([{role:"system",content:n.sys},{role:"user",content:n.make(e)}],{temperature:.5},t=>{o.ocrOut.textContent=t})}catch(t){o.ocrOut.textContent="エラー: "+(t&&t.message||t)}finally{Un=!1,Array.from(o.ocrOps.children).forEach(t=>t.disabled=!1)}}function Ja(){let n=o.ocrText.value.trim();if(!n)return;let e=Xs.find(t=>t.id==="extract");e&&(eo(e),o.exInput.value=n)}o.ocrDrop.addEventListener("click",()=>o.ocrFile.click());o.ocrFile.addEventListener("change",n=>{let e=n.target.files&&n.target.files[0];e&&fr(e)});o.ocrDrop.addEventListener("dragover",n=>{n.preventDefault(),o.ocrDrop.classList.add("drag")});o.ocrDrop.addEventListener("dragleave",()=>o.ocrDrop.classList.remove("drag"));o.ocrDrop.addEventListener("drop",n=>{n.preventDefault(),o.ocrDrop.classList.remove("drag");let e=n.dataTransfer&&n.dataTransfer.files&&n.dataTransfer.files[0];e&&fr(e)});o.ocrToExtractBtn.addEventListener("click",Ja);o.ocrRerunBtn.addEventListener("click",()=>{qn&&no(qn)});o.ocrToChatBtn.addEventListener("click",()=>er(o.ocrText.value));window.addEventListener("paste",n=>{if(!Pe||Pe.id!=="ocr")return;let e=n.clipboardData&&n.clipboardData.items;if(e){for(let t of e)if(t.type&&t.type.startsWith("image/")){let r=t.getAsFile();if(r){fr(r),n.preventDefault();break}}}});var wt=null,Ne=null,me={items:[],vecs:[]},ro="";function K(n,e){o.semStatus.hidden=!1,o.semBar.style.width=(e||0)+"%",o.semStatusText.textContent=n}function Qa(){let n=Z.prebuiltAppConfig&&Z.prebuiltAppConfig.model_list||[],e=s=>Z.ModelType&&s.model_type===Z.ModelType.embedding||/embed/i.test(s.model_id),t=n.filter(e);if(!t.length)return null;let r=t.find(s=>/multilingual/i.test(s.model_id))||t.find(s=>/arctic-embed-s/i.test(s.model_id))||t.slice().sort((s,i)=>(s.vram_required_MB||1e9)-(i.vram_required_MB||1e9))[0];return r?r.model_id:null}async function Ka(n){if(wt)return wt;let e=Ne||Qa();if(!e)throw new Error("この環境に埋め込みモデルが見つかりませんでした。");return Ne=e,wt=await Z.CreateMLCEngine(e,{initProgressCallback:n}),wt}async function jt(n){let e=await Ka(s=>K("埋め込みモデル読み込み "+Math.round((s.progress||0)*100)+"%",Math.round((s.progress||0)*100))),t=[],r=32;for(let s=0;s<n.length;s+=r){let i=n.slice(s,s+r);((await e.embeddings.create({input:i})).data||[]).forEach(u=>t.push(u.embedding)),n.length>1&&K("埋め込み中 "+Math.min(s+r,n.length)+"/"+n.length,Math.round(Math.min(s+r,n.length)/n.length*100))}return t}function so(n,e){let t=0,r=0,s=0;for(let i=0;i<n.length;i++)t+=n[i]*e[i],r+=n[i]*n[i],s+=e[i]*e[i];return t/(Math.sqrt(r)*Math.sqrt(s)+1e-8)}var De=!1;async function Za(){if(De)return;let n=o.semCorpus.value.split(`
+`).map(e=>e.trim()).filter(Boolean);if(!n.length){K("ノートを1行以上入力してください。",0);return}De=!0,o.semBuild.disabled=!0,o.semSearchRow.hidden=!0,K("準備中…",0);try{let e=await jt(n);me={items:n,vecs:e},xe||(xe=Ys("col"));let t=o.semColName.value.trim()||"無題のコレクション";o.semColName.value=t,await pe({id:xe,name:t,items:n,vecs:e.map(r=>Float32Array.from(r)),model:Ne,corpus:o.semCorpus.value,updatedAt:Date.now()}),await hr(xe),K("✓ 「"+t+"」に "+n.length+"件を保存しました。検索できます。",100),o.semSearchRow.hidden=!1}catch(e){console.error(e),K("エラー: "+(e&&e.message||e)+"（初回はネット接続が必要です）",0)}finally{De=!1,o.semBuild.disabled=!1}}function Xa(n){if(o.semResults.innerHTML="",!n.length){o.semResults.textContent="結果がありません。";return}n.forEach(r=>{let s=Math.max(0,Math.round(r.s*100)),i=y("div","sem-item"),l=y("div","sem-main"),u=y("div","sem-meter"),d=y("i");d.style.width=s+"%",u.appendChild(d),l.append(y("div","sem-text",r.t),u),i.append(l,y("div","sem-score",s+"%")),o.semResults.appendChild(i)});let e=y("div","tool-row");e.style.marginTop="12px";let t=y("button","send-to","💬 この結果をチャットへ");t.addEventListener("click",()=>{let r="「"+(ro||"")+`」に近いノート:
+`+n.map((s,i)=>i+1+". "+s.t).join(`
+`);er(r)}),e.appendChild(t),o.semResults.appendChild(e)}async function oo(){if(De)return;if(!me.items.length){K("先にインデックスを作成してください。",0);return}let n=o.semQuery.value.trim();if(n){ro=n,De=!0,o.semGo.disabled=!0;try{let e=(await jt([n]))[0],t=me.items.map((r,s)=>({t:r,s:so(e,me.vecs[s])}));t.sort((r,s)=>s.s-r.s),Xa(t.slice(0,10)),K("✓ "+me.items.length+"件から検索しました",100)}catch(e){console.error(e),K("検索エラー: "+(e&&e.message||e),0)}finally{De=!1,o.semGo.disabled=!1}}}o.semBuild.addEventListener("click",Za);o.semGo.addEventListener("click",oo);o.semQuery.addEventListener("keydown",n=>{n.key==="Enter"&&(n.preventDefault(),oo())});o.semCorpus.addEventListener("input",()=>{me.items.length&&!De&&K("変更を反映するには「インデックスを作成して保存」を押してください。",100)});var el="ember-semantic",Et="collections",$s=!1,xe=null;function tl(){return new Promise((n,e)=>{let t=indexedDB.open(el,2);t.onupgradeneeded=r=>{let s=t.result,i=r.target.transaction;if(s.objectStoreNames.contains(Et)||s.createObjectStore(Et,{keyPath:"id"}),s.objectStoreNames.contains("index"))try{let l=i.objectStore("index").get("current");l.onsuccess=()=>{let u=l.result;u&&u.items&&u.items.length&&i.objectStore(Et).put({id:"col_legacy",name:"マイノート",items:u.items,vecs:u.vecs,model:u.model,corpus:u.corpus,updatedAt:u.savedAt||Date.now()})}}catch{}},t.onsuccess=()=>n(t.result),t.onerror=()=>e(t.error)})}function Jt(n,e){return tl().then(t=>new Promise((r,s)=>{let i=t.transaction(Et,n),l=e(i.objectStore(Et));i.oncomplete=()=>r(l&&l.result!==void 0?l.result:l),i.onerror=()=>s(i.error)}))}async function pe(n){try{await Jt("readwrite",e=>e.put(n))}catch(e){console.warn("col put:",e)}}async function nt(n){try{return await Jt("readonly",e=>e.get(n))}catch{return null}}async function nl(n){try{await Jt("readwrite",e=>e.delete(n))}catch(e){console.warn("col delete:",e)}}async function io(){try{return(await Jt("readonly",e=>e.getAll())||[]).sort((e,t)=>(t.updatedAt||0)-(e.updatedAt||0))}catch(n){return console.warn("col list:",n),[]}}async function hr(n){let e=await io();if(o.semColSelect.innerHTML="",!e.length){let t=y("option");t.value="",t.textContent="（コレクションなし）",o.semColSelect.appendChild(t)}return e.forEach(t=>{let r=y("option");r.value=t.id,r.textContent=t.name||"無題",o.semColSelect.appendChild(r)}),n&&(o.semColSelect.value=n),e}async function mr(n){let e=await nt(n);if(!e)return;xe=e.id,o.semColName.value=e.name||"",o.semCorpus.value=e.corpus||(e.items||[]).join(`
+`),o.semResults.innerHTML="";let t=Z.prebuiltAppConfig&&Z.prebuiltAppConfig.model_list||[];(!e.model||t.some(s=>s.model_id===e.model))&&e.vecs&&e.items&&e.vecs.length===e.items.length?(Ne=e.model||Ne,me={items:e.items,vecs:e.vecs},o.semSearchRow.hidden=!1,K("✓ 「"+(e.name||"")+"」を読み込みました（"+e.items.length+"件）。検索できます。",100)):(me={items:[],vecs:[]},o.semSearchRow.hidden=!0,K("「"+(e.name||"")+"」を読み込みました。検索するには「インデックスを作成して保存」してください。",100))}function Gt(){xe=null,o.semColName.value="新しいコレクション",o.semCorpus.value="",me={items:[],vecs:[]},o.semResults.innerHTML="",o.semSearchRow.hidden=!0;try{o.semColSelect.value=""}catch{}K("新しいコレクションです。ノートを入力して「インデックスを作成して保存」してください。",0)}async function rl(){if(!xe){Gt();return}await nl(xe);let n=await hr();n.length?mr(n[0].id):Gt(),K("コレクションを削除しました。",0)}async function sl(){if($s)return;$s=!0;let n=await hr();n.length?mr(n[0].id):Gt()}o.semColSelect.addEventListener("change",()=>{o.semColSelect.value&&mr(o.semColSelect.value)});o.semNewBtn.addEventListener("click",Gt);o.semDeleteBtn.addEventListener("click",rl);var Vn="ember.ragColId";async function ol(n,e){if(!Q)return[];(!Qe||Qe.id!==Q)&&(Qe=await nt(Q));let t=Qe;if(!t||!t.items||!t.items.length)return[];if(!t.vecs||t.vecs.length!==t.items.length){let i=await jt(t.items);t={...t,vecs:i.map(l=>Float32Array.from(l)),model:Ne},Qe=t;try{await pe(t)}catch{}}else t.model&&(Ne=t.model);let r=(await jt([n]))[0],s=t.items.map((i,l)=>({t:i,s:so(r,t.vecs[l])}));return s.sort((i,l)=>l.s-i.s),s.slice(0,e||4).filter(i=>i.s>.15)}async function il(){let n=await io();o.ragSelect.innerHTML="";let e=y("option");if(e.value="",e.textContent="使わない（通常のチャット）",o.ragSelect.appendChild(e),n.forEach(t=>{let r=y("option");r.value=t.id,r.textContent=t.name||"無題",o.ragSelect.appendChild(r)}),!n.length){let t=y("option");t.value="",t.disabled=!0,t.textContent="（道具箱の意味検索でノートを作成）",o.ragSelect.appendChild(t)}Q&&n.some(t=>t.id===Q)?o.ragSelect.value=Q:(Q=null,o.ragSelect.value=""),o.ragBar.classList.toggle("active",!!Q)}o.ragSelect.addEventListener("change",()=>{Q=o.ragSelect.value||null,Qe=null,o.ragBar.classList.toggle("active",!!Q);try{Q?localStorage.setItem(Vn,Q):localStorage.removeItem(Vn)}catch{}Q&&ue("📎 このノートを参照して回答します。",2500)});try{Q=localStorage.getItem(Vn)||null}catch{}za();Ha();Va();Yt();Vt(o.exOut);Vt(o.tfOut);Vt(o.pgOut);Vt(o.ocrOut);var al="ember-chats",Se="conversations";function gr(){return new Promise((n,e)=>{let t=indexedDB.open(al,1);t.onupgradeneeded=()=>{let r=t.result;r.objectStoreNames.contains(Se)||r.createObjectStore(Se,{keyPath:"id"}).createIndex("updatedAt","updatedAt")},t.onsuccess=()=>n(t.result),t.onerror=()=>e(t.error)})}async function ll(n){try{let e=await gr();await new Promise((t,r)=>{let s=e.transaction(Se,"readwrite");s.objectStore(Se).put(n),s.oncomplete=t,s.onerror=()=>r(s.error)})}catch(e){console.warn("chat put:",e)}}async function cl(){try{let n=await gr();return await new Promise((e,t)=>{let s=n.transaction(Se,"readonly").objectStore(Se).getAll();s.onsuccess=()=>e((s.result||[]).sort((i,l)=>(l.updatedAt||0)-(i.updatedAt||0))),s.onerror=()=>t(s.error)})}catch(n){return console.warn("chat list:",n),[]}}async function ul(n){try{let e=await gr();await new Promise((t,r)=>{let s=e.transaction(Se,"readwrite");s.objectStore(Se).delete(n),s.oncomplete=t,s.onerror=()=>r(s.error)})}catch(e){console.warn("chat delete:",e)}}function ao(){if(!R||!et||!C.some(r=>r.role==="user"))return;let n=C.find(r=>r.role==="user"),e=((n?n.content:"")||"").replace(/\s+/g," ").trim().slice(0,42)||"新しい会話",t=R;ll({id:et,personaId:t.id,persona:{id:t.id,name:t.name,emoji:t.emoji,accent:t.accent,system:t.system,greeting:t.greeting},messages:C.slice(),title:e,updatedAt:Date.now()})}function pl(n){tt(),Pe=null,At="chars",et=n.id;let e=n.persona||js.find(t=>t.id===n.personaId)||{id:n.personaId,name:"会話",emoji:"💬",accent:"#F2B441",system:"",greeting:""};R=e,vt(e.accent),o.chipAva.textContent=e.emoji,o.chipName.textContent=e.name,C=(n.messages||[]).slice(),o.suggest.innerHTML="",_t(),ge("chat"),Ie()}function dl(n){if(!n)return"";let e=Date.now()-n,t=6e4,r=36e5,s=864e5;return e<t?"たった今":e<r?Math.floor(e/t)+"分前":e<s?Math.floor(e/r)+"時間前":e<7*s?Math.floor(e/s)+"日前":new Date(n).toLocaleDateString("ja-JP")}async function lo(){o.histList.innerHTML='<div class="hist-empty">読み込み中…</div>';let n=await cl();if(o.histList.innerHTML="",!n.length){o.histList.innerHTML='<div class="hist-empty">まだ保存された会話はありません。キャラと話すと、ここに自動で残ります。</div>';return}n.forEach(e=>{let t=e.persona||{},r=(e.messages||[]).filter(d=>d.role==="user").length,s=y("button","hist-item"),i=y("span","mini-ava",t.emoji||"💬");t.accent&&i.style.setProperty("--c",t.accent);let l=y("div","hist-main");l.append(y("div","hist-title",e.title||"会話"),y("div","hist-meta",(t.name||"")+" · "+dl(e.updatedAt)+" · "+r+"往復"));let u=y("button","hist-del","×");u.title="削除",u.addEventListener("click",d=>{d.stopPropagation(),ul(e.id).then(()=>{et===e.id&&(et=null),lo()})}),s.append(i,l,u),s.addEventListener("click",()=>pl(e)),o.histList.appendChild(s)})}var xt=null;window.addEventListener("beforeinstallprompt",n=>{n.preventDefault(),xt=n,o.installBtn.hidden=!1});o.installBtn.addEventListener("click",async()=>{xt&&(xt.prompt(),await xt.userChoice,xt=null,o.installBtn.hidden=!0)});window.addEventListener("appinstalled",()=>{o.installBtn.hidden=!0});"serviceWorker"in navigator&&window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(n=>console.warn("SW:",n)));(function(){if(la(),Sa(),ea(),na(),sa(),ia(),xa(),lr&&(Ht=Ma(),o.micBtn.hidden=!1),!navigator.gpu){o.supported.hidden=!0,o.unsupported.hidden=!1;return}if(!Me.length){o.supported.hidden=!0,o.unsupported.hidden=!1,o.unsupported.innerHTML="<b>モデル一覧を取得できませんでした。</b><br>ネットワーク接続を確認して再読み込みしてください。";return}ca()})();
+
+</script>
+
+<!-- Ember backup (export/import) — self-contained add-on -->
+<script>
+/* ===========================================================================
+ * Ember — バックアップ（エクスポート / インポート）
+ * 単一HTMLへ後付けする独立モジュール。アプリ本体（minify済みバンドル）の
+ * 内部実装には一切依存せず、IndexedDB を DB 名で開いて全データを入出力する。
+ *  - localStorage: ember.* (personas / memory / ragColId / voiceNoticeSeen)
+ *  - IndexedDB  : ember-chats(v1, store "conversations")
+ *                 ember-semantic(v2, store "collections")  ※vecs は Float32Array
+ * =========================================================================== */
+(function () {
+  "use strict";
+  if (typeof window !== "undefined" && window.__emberBackupLoaded) return;
+  if (typeof window !== "undefined") window.__emberBackupLoaded = true;
+
+  var FORMAT = "ember-backup";
+  var FORMAT_VERSION = 1;
+  var LS_PREFIX = "ember.";
+
+  // アプリ本体と一致させる固定スキーマ（バージョンを上げないこと＝VersionError回避）
+  var DB_SCHEMA = {
+    "ember-chats": {
+      version: 1,
+      stores: [{ name: "conversations", keyPath: "id", indexes: [{ name: "updatedAt", keyPath: "updatedAt" }] }]
+    },
+    "ember-semantic": {
+      version: 2,
+      stores: [{ name: "collections", keyPath: "id", indexes: [] }]
+    }
+  };
+
+  var TYPED = {
+    Float32Array: Float32Array, Float64Array: Float64Array,
+    Int8Array: Int8Array, Uint8Array: Uint8Array, Uint8ClampedArray: Uint8ClampedArray,
+    Int16Array: Int16Array, Uint16Array: Uint16Array,
+    Int32Array: Int32Array, Uint32Array: Uint32Array
+  };
+
+  /* ---- 型付き配列を可逆にエンコード / デコード ---- */
+  function isTypedArray(v) {
+    return v && typeof v === "object" && v.constructor && TYPED[v.constructor.name] &&
+      typeof v.length === "number" && typeof v.BYTES_PER_ELEMENT === "number";
+  }
+  function encodeValue(v) {
+    if (isTypedArray(v)) return { __typed: v.constructor.name, v: Array.prototype.slice.call(v) };
+    if (Array.isArray(v)) return v.map(encodeValue);
+    if (v instanceof ArrayBuffer) return { __typed: "Uint8Array", v: Array.prototype.slice.call(new Uint8Array(v)) };
+    if (v && typeof v === "object") {
+      var o = {};
+      for (var k in v) if (Object.prototype.hasOwnProperty.call(v, k)) o[k] = encodeValue(v[k]);
+      return o;
+    }
+    return v;
+  }
+  function decodeValue(v) {
+    if (Array.isArray(v)) return v.map(decodeValue);
+    if (v && typeof v === "object") {
+      if (typeof v.__typed === "string" && Array.isArray(v.v) && TYPED[v.__typed]) {
+        return TYPED[v.__typed].from(v.v);
+      }
+      var o = {};
+      for (var k in v) if (Object.prototype.hasOwnProperty.call(v, k)) o[k] = decodeValue(v[k]);
+      return o;
+    }
+    return v;
+  }
+
+  /* ---- IndexedDB ヘルパ ---- */
+  function openDB(name, version, upgrade) {
+    return new Promise(function (resolve, reject) {
+      var req;
+      try { req = version ? indexedDB.open(name, version) : indexedDB.open(name); }
+      catch (e) { return reject(e); }
+      req.onupgradeneeded = function (ev) { try { if (upgrade) upgrade(req.result, ev); } catch (e) {} };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+      req.onblocked = function () {};
+    });
+  }
+  function getAllFromStore(db, storeName) {
+    return new Promise(function (resolve, reject) {
+      var tx, st;
+      try { tx = db.transaction(storeName, "readonly"); st = tx.objectStore(storeName); }
+      catch (e) { return resolve([]); }
+      var r = st.getAll();
+      r.onsuccess = function () { resolve(r.result || []); };
+      r.onerror = function () { reject(r.error); };
+    });
+  }
+  function putAll(db, storeName, records) {
+    return new Promise(function (resolve, reject) {
+      if (!records || !records.length) return resolve(0);
+      if (!db.objectStoreNames.contains(storeName)) return resolve(0);
+      var tx = db.transaction(storeName, "readwrite");
+      var st = tx.objectStore(storeName);
+      for (var i = 0; i < records.length; i++) {
+        try { st.put(records[i]); } catch (e) {}
+      }
+      tx.oncomplete = function () { resolve(records.length); };
+      tx.onerror = function () { reject(tx.error); };
+      tx.onabort = function () { reject(tx.error || new Error("aborted")); };
+    });
+  }
+  // 書き込み用に DB を開く（必要なら固定バージョンで欠損ストアを作成）
+  function openForWrite(name) {
+    var schema = DB_SCHEMA[name];
+    if (!schema) return Promise.resolve(null);
+    return openDB(name, schema.version, function (db) {
+      schema.stores.forEach(function (st) {
+        if (!db.objectStoreNames.contains(st.name)) {
+          var os = db.createObjectStore(st.name, { keyPath: st.keyPath });
+          (st.indexes || []).forEach(function (ix) { try { os.createIndex(ix.name, ix.keyPath); } catch (e) {} });
+        }
+      });
+    }).catch(function () { return openDB(name); }); // 既存が新しいバージョン等のときは現行で開く
+  }
+
+  /* ---- localStorage ---- */
+  function readLocal() {
+    var out = {};
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(LS_PREFIX) === 0) out[k] = localStorage.getItem(k);
+      }
+    } catch (e) {}
+    return out;
+  }
+  function writeLocal(obj) {
+    var n = 0;
+    if (!obj) return 0;
+    try {
+      for (var k in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, k) && typeof obj[k] === "string") {
+          localStorage.setItem(k, obj[k]); n++;
+        }
+      }
+    } catch (e) {}
+    return n;
+  }
+
+  /* ---- エクスポート ---- */
+  function exportAll() {
+    var data = {
+      app: "ember",
+      kind: FORMAT,
+      formatVersion: FORMAT_VERSION,
+      exportedAt: new Date().toISOString(),
+      localStorage: readLocal(),
+      indexeddb: {}
+    };
+    var names = Object.keys(DB_SCHEMA);
+    return names.reduce(function (p, name) {
+      return p.then(function () {
+        return openDB(name).then(function (db) {
+          var stores = Array.prototype.slice.call(db.objectStoreNames);
+          var dbEntry = { version: db.version, stores: {} };
+          return stores.reduce(function (q, sName) {
+            return q.then(function () {
+              return getAllFromStore(db, sName).then(function (rows) {
+                dbEntry.stores[sName] = rows.map(encodeValue);
+              });
+            });
+          }, Promise.resolve()).then(function () {
+            db.close();
+            data.indexeddb[name] = dbEntry;
+          });
+        }).catch(function () { data.indexeddb[name] = { version: DB_SCHEMA[name].version, stores: {} }; });
+      });
+    }, Promise.resolve()).then(function () { return data; });
+  }
+
+  function summarize(data) {
+    var s = { conversations: 0, collections: 0, personas: 0, memory: false, raw: data };
+    try {
+      var idb = data.indexeddb || {};
+      if (idb["ember-chats"] && idb["ember-chats"].stores && idb["ember-chats"].stores.conversations)
+        s.conversations = idb["ember-chats"].stores.conversations.length;
+      if (idb["ember-semantic"] && idb["ember-semantic"].stores && idb["ember-semantic"].stores.collections)
+        s.collections = idb["ember-semantic"].stores.collections.length;
+      var ls = data.localStorage || {};
+      if (ls["ember.personas.v1"]) {
+        try { var arr = JSON.parse(ls["ember.personas.v1"]); s.personas = Array.isArray(arr) ? arr.length : 0; } catch (e) {}
+      }
+      var mem = ls["ember.memory.v1"];
+      if (mem) { try { var m = JSON.parse(mem); s.memory = !!(typeof m === "string" ? m.trim() : (m && (m.text || JSON.stringify(m)).trim && (m.text || "").trim())); }
+        catch (e) { s.memory = String(mem).trim().length > 2; } }
+    } catch (e) {}
+    return s;
+  }
+
+  /* ---- インポート ---- */
+  function importAll(data) {
+    if (!data || typeof data !== "object") return Promise.reject(new Error("不正なファイル"));
+    if (data.kind && data.kind !== FORMAT && data.app !== "ember")
+      return Promise.reject(new Error("Ember のバックアップではありません"));
+    if (!data.indexeddb && !data.localStorage)
+      return Promise.reject(new Error("バックアップの内容が見つかりません"));
+
+    var report = { localStorage: 0, conversations: 0, collections: 0 };
+    report.localStorage = writeLocal(data.localStorage || {});
+
+    var idb = data.indexeddb || {};
+    var names = Object.keys(DB_SCHEMA);
+    return names.reduce(function (p, name) {
+      return p.then(function () {
+        var entry = idb[name];
+        if (!entry || !entry.stores) return;
+        return openForWrite(name).then(function (db) {
+          if (!db) return;
+          var stores = Object.keys(entry.stores);
+          return stores.reduce(function (q, sName) {
+            return q.then(function () {
+              var rows = (entry.stores[sName] || []).map(decodeValue);
+              return putAll(db, sName, rows).then(function (n) {
+                if (sName === "conversations") report.conversations += n;
+                if (sName === "collections") report.collections += n;
+              });
+            });
+          }, Promise.resolve()).then(function () { db.close(); });
+        });
+      });
+    }, Promise.resolve()).then(function () { return report; });
+  }
+
+  /* ---- ファイル入出力 ---- */
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function downloadBackup() {
+    return exportAll().then(function (data) {
+      var json = JSON.stringify(data);
+      var blob = new Blob([json], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var d = new Date();
+      var fname = "ember-backup-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+        "-" + pad(d.getHours()) + pad(d.getMinutes()) + ".json";
+      var a = document.createElement("a");
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+      return summarize(data);
+    });
+  }
+  function readFileAsText(file) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function () { resolve(String(fr.result)); };
+      fr.onerror = function () { reject(fr.error || new Error("読み込み失敗")); };
+      fr.readAsText(file);
+    });
+  }
+
+  /* ---- UI ---- */
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    if (!t) return;
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(t.__ebkT);
+    t.__ebkT = setTimeout(function () { t.classList.remove("show"); }, 2800);
+  }
+
+  function initUI() {
+    if (typeof document === "undefined") return;
+    if (document.getElementById("ebkBtn")) return;
+
+    // 既存CSSを補うスタイル（自前クラスのみ）
+    var style = document.createElement("style");
+    style.textContent =
+      ".ebk-summary{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 16px}" +
+      ".ebk-pill{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px}" +
+      ".ebk-pill b{color:var(--text);font-weight:700}" +
+      ".ebk-status{margin-top:14px;font-size:13px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;line-height:1.6}" +
+      ".ebk-status .ebk-confirm-actions{display:flex;gap:10px;margin-top:12px}" +
+      ".ebk-actions{display:flex;flex-direction:column;gap:10px;margin-top:6px}" +
+      ".btn-save.ebk-wide,.btn-cancel.ebk-wide{flex:none;width:100%}";
+    document.head.appendChild(style);
+
+    // ヘッダーの歯車ボタン
+    var btn = document.createElement("button");
+    btn.id = "ebkBtn";
+    btn.className = "icon-btn";
+    btn.setAttribute("title", "バックアップ（書き出し / 読み込み）");
+    btn.setAttribute("aria-label", "バックアップ");
+    btn.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>';
+    var actions = document.querySelector(".top-actions");
+    if (actions) actions.appendChild(btn);
+    else if (document.querySelector(".top")) document.querySelector(".top").appendChild(btn);
+
+    // モーダル
+    var ov = document.createElement("div");
+    ov.id = "ebkOverlay";
+    ov.className = "overlay";
+    ov.setAttribute("role", "dialog");
+    ov.setAttribute("aria-modal", "true");
+    ov.setAttribute("aria-labelledby", "ebkTitle");
+    ov.innerHTML =
+      '<div class="sheet">' +
+        '<h3 id="ebkTitle">バックアップ</h3>' +
+        '<p class="hint">会話・キャラクター・メモリ・意味検索コレクションを、この端末のデータごと 1 つの JSON ファイルに保存／復元します。すべて端末内で完結し、外部には送信しません。</p>' +
+        '<div class="ebk-summary" id="ebkSummary"><span class="ebk-pill">読み込み中…</span></div>' +
+        '<div class="ebk-actions">' +
+          '<button id="ebkExport" class="btn-save ebk-wide">⤓ エクスポート（書き出し）</button>' +
+          '<button id="ebkImport" class="btn-cancel ebk-wide">⤒ インポート（読み込み）</button>' +
+        '</div>' +
+        '<div class="ebk-status" id="ebkStatus" hidden></div>' +
+        '<p class="hint" style="margin:16px 0 0">読み込みは既存データに<b>追加・更新</b>します（同じ項目は上書き／消去はしません）。完了後にアプリを再読み込みします。</p>' +
+        '<div class="sheet-actions"><button id="ebkClose" class="btn-cancel" style="flex:1">閉じる</button></div>' +
+        '<input id="ebkFile" type="file" accept="application/json,.json" hidden />' +
+      '</div>';
+    document.body.appendChild(ov);
+
+    var statusEl = ov.querySelector("#ebkStatus");
+    var summaryEl = ov.querySelector("#ebkSummary");
+    var fileEl = ov.querySelector("#ebkFile");
+
+    function setStatus(html) {
+      if (html == null) { statusEl.hidden = true; statusEl.innerHTML = ""; return; }
+      statusEl.hidden = false; statusEl.innerHTML = html;
+    }
+    function pill(label, val) { return '<span class="ebk-pill">' + label + ' <b>' + val + '</b></span>'; }
+
+    function refreshSummary() {
+      summaryEl.innerHTML = '<span class="ebk-pill">読み込み中…</span>';
+      exportAll().then(function (data) {
+        var s = summarize(data);
+        summaryEl.innerHTML =
+          pill("会話", s.conversations + "件") +
+          pill("自作キャラ", s.personas + "体") +
+          pill("コレクション", s.collections + "件") +
+          '<span class="ebk-pill">メモリ <b>' + (s.memory ? "あり" : "なし") + "</b></span>";
+      }).catch(function () {
+        summaryEl.innerHTML = '<span class="ebk-pill">概要を取得できませんでした</span>';
+      });
+    }
+
+    function open() { setStatus(null); ov.classList.add("on"); refreshSummary(); }
+    function close() { ov.classList.remove("on"); }
+
+    btn.addEventListener("click", open);
+    ov.querySelector("#ebkClose").addEventListener("click", close);
+    ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && ov.classList.contains("on")) close(); });
+
+    ov.querySelector("#ebkExport").addEventListener("click", function () {
+      var b = ov.querySelector("#ebkExport"); b.disabled = true;
+      downloadBackup().then(function (s) {
+        b.disabled = false;
+        toast("書き出しました（会話" + s.conversations + "件・キャラ" + s.personas + "体・コレクション" + s.collections + "件）");
+      }).catch(function (err) {
+        b.disabled = false;
+        setStatus("書き出しに失敗しました：" + (err && err.message ? err.message : err));
+      });
+    });
+
+    ov.querySelector("#ebkImport").addEventListener("click", function () { fileEl.value = ""; fileEl.click(); });
+
+    fileEl.addEventListener("change", function () {
+      var f = fileEl.files && fileEl.files[0];
+      if (!f) return;
+      readFileAsText(f).then(function (text) {
+        var data;
+        try { data = JSON.parse(text); }
+        catch (e) { setStatus("JSON を解析できませんでした。Ember で書き出したファイルを選んでください。"); return; }
+        if (data.app !== "ember" && data.kind !== FORMAT) {
+          setStatus("Ember のバックアップファイルではないようです。"); return;
+        }
+        var s = summarize(data);
+        setStatus(
+          "このファイルの内容：<br>" +
+          pill("会話", s.conversations + "件") + " " +
+          pill("自作キャラ", s.personas + "体") + " " +
+          pill("コレクション", s.collections + "件") + " " +
+          '<span class="ebk-pill">メモリ <b>' + (s.memory ? "あり" : "なし") + "</b></span>" +
+          "<br>既存データに追加・更新します。よろしいですか？" +
+          '<div class="ebk-confirm-actions">' +
+            '<button id="ebkDoImport" class="btn-save" style="flex:2">読み込む</button>' +
+            '<button id="ebkCancelImport" class="btn-cancel" style="flex:1">やめる</button>' +
+          '</div>'
+        );
+        ov.querySelector("#ebkCancelImport").addEventListener("click", function () { setStatus(null); });
+        ov.querySelector("#ebkDoImport").addEventListener("click", function () {
+          var di = ov.querySelector("#ebkDoImport"); di.disabled = true; di.textContent = "読み込み中…";
+          importAll(data).then(function (rep) {
+            setStatus("読み込みました（会話" + rep.conversations + "件・コレクション" + rep.collections + "件）。アプリを再読み込みします…");
+            toast("読み込み完了。再読み込みします…");
+            setTimeout(function () { try { location.reload(); } catch (e) {} }, 1100);
+          }).catch(function (err) {
+            di.disabled = false; di.textContent = "読み込む";
+            setStatus("読み込みに失敗しました：" + (err && err.message ? err.message : err));
+          });
+        });
+      }).catch(function (err) {
+        setStatus("ファイルを読めませんでした：" + (err && err.message ? err.message : err));
+      });
+    });
+  }
+
+  // テスト用フック
+  if (typeof window !== "undefined") {
+    window.EmberBackup = {
+      exportAll: exportAll, importAll: importAll, summarize: summarize,
+      encodeValue: encodeValue, decodeValue: decodeValue,
+      DB_SCHEMA: DB_SCHEMA, _initUI: initUI
+    };
+  }
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = { exportAll: exportAll, importAll: importAll, summarize: summarize, encodeValue: encodeValue, decodeValue: decodeValue, DB_SCHEMA: DB_SCHEMA };
+  }
+
+  // 起動
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initUI);
+    else initUI();
+  }
+})();
+
+</script>
+</body>
+</html>
